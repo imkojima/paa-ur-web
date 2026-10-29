@@ -1,0 +1,78 @@
+{
+  // PAA-UR — 單一 Worker：服務前台靜態檔（../dist）＋ /api（Hono）。
+  // 兩套環境：dev / prod，各自獨立的 Worker 名稱、D1、KV、R2。
+  // 部署一律帶環境：`wrangler deploy --env dev` 或 `--env prod`。
+  //
+  // 尚未建立雲端資源：下方 database_id / KV id 皆為佔位值，本機 `wrangler dev` 不受影響
+  // （本機 D1／KV／R2 由 miniflare 模擬）。正式部署前需：
+  //   1. 決定 Cloudflare 帳號並補上 account_id
+  //   2. `wrangler d1 create`、`wrangler kv namespace create`、`wrangler r2 bucket create` 後填回實際 id
+  //   3. 決定網域後補上 routes
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paa-ur",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  // 前台靜態資產：服務 build 產物 dist/（由根目錄 `npm run build` 從 web/ 產生）。
+  // 全部路徑一律先過 Worker（run_worker_first: true）再回退資產層：
+  // 一是讓 dev 環境的動態 noindex 標頭（見 index.ts）能蓋到「/」首頁；
+  // 二是讓 prod 上線前的 Basic Auth 閘門（見 index.ts）也能蓋到靜態檔，不會被資產層繞過 Worker 而漏擋。
+  "assets": { "directory": "../dist", "binding": "ASSETS", "run_worker_first": true },
+
+  "env": {
+    "dev": {
+      "name": "paa-ur-dev",
+      "vars": { "ENVIRONMENT": "dev" },
+      // 公告預約發布：每 5 分鐘檢查一次到期的 scheduled 公告（見 index.ts 的 scheduled()）。
+      "triggers": { "crons": ["*/5 * * * *"] },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "paa-ur-db-dev",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "kv_namespaces": [
+        { "binding": "KV", "id": "00000000000000000000000000000000" }
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "paa-ur-files-dev" }
+      ]
+    },
+
+    "prod": {
+      "name": "paa-ur-prod",
+      "vars": { "ENVIRONMENT": "prod" },
+      "triggers": { "crons": ["*/5 * * * *"] },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "paa-ur-db",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "kv_namespaces": [
+        { "binding": "KV", "id": "00000000000000000000000000000000" }
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "paa-ur-files" }
+      ]
+    }
+  }
+}

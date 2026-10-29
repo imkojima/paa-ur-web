@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code — machine-local tool config
+.claude/settings.local.json
+.claude/launch.json
+
+# Build output / deps
+node_modules/
+/dist/
+
+# Logs / temp
+*.log
+
+.wrangler/
+
+# 備份產出（含管理者帳號雜湊與稽核紀錄，不可進版控）
+# 預設輸出在 repo 之外（../paa-ur-backup）；此處為使用 --out 指向 repo 內時的防呆。
+/backup/
+/paa-ur-backup/
+.dev.vars*

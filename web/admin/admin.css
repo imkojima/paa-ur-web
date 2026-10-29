@@ -1,0 +1,204 @@
+:root{--navy:#1f3a5f;--accent:#b8924a;--line:#d9dee3;--ink:#1c2733;--body:#46505a;--muted:#7a7d82;--cream:#f6f3ec;--red:#a53030;--green:#2d6a4f;}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--ink);background:#eef1f4;font-size:14px;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;font-size:14px;}
+a{color:var(--navy);}
+
+/* login */
+.pa-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.pa-login-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--navy);padding:34px 30px;width:100%;max-width:360px;box-shadow:0 10px 30px rgba(0,0,0,.08);}
+.pa-login-card h1{font-size:18px;margin:0 0 4px;color:var(--navy);}
+.pa-login-card p{margin:0 0 20px;color:var(--muted);font-size:13px;}
+.pa-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+/* line-height 明訂：中文字與英文字在 normal 下的行高不同（差約 3px），
+   同一列一邊是英文 label（如 Email）一邊是中文 label（如「角色」）時，下方欄位會對不齊。 */
+.pa-field span{font-size:13px;font-weight:600;color:var(--body);line-height:1.3;}
+.pa-field input,.pa-field select,.pa-field textarea{border:1px solid var(--line);background:#fff;padding:9px 11px;color:var(--ink);outline:none;width:100%;}
+/* select 的原生高度比 input 略高（即便 padding/border 相同也一樣）；
+   固定同一高度，text／select 並排時（如帳號｜姓名、Email｜角色）才會齊平。 */
+.pa-field input,.pa-field select{height:37px;}
+.pa-field input:focus,.pa-field select:focus,.pa-field textarea:focus{border-color:var(--navy);}
+.pa-err{color:var(--red);font-size:13px;margin:6px 0;}
+
+/* chrome */
+.pa-top{background:var(--navy);color:#fff;padding:0 22px;height:54px;display:flex;align-items:center;justify-content:space-between;}
+.pa-top-brand{display:flex;align-items:center;gap:10px;font-weight:700;}
+.pa-top-brand img{width:26px;height:26px;}
+.pa-top-right{display:flex;align-items:center;gap:14px;font-size:13px;}
+.pa-env{font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:3px;letter-spacing:1px;}
+.pa-testbanner{background:#fbbf24;color:#402c00;font-size:13px;font-weight:700;letter-spacing:.02em;text-align:center;padding:8px 16px;}
+.pa-wrap{max-width:1080px;margin:0 auto;padding:24px 22px 60px;}
+.pa-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.pa-h h2{font-size:18px;color:var(--navy);margin:0;}
+
+/* buttons */
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;padding:8px 16px;font-size:13px;}
+.btn-ghost{border:1px solid var(--line);background:#fff;color:var(--body);padding:8px 14px;font-size:13px;}
+.btn-accent{border:1px solid var(--accent);background:var(--accent);color:#fff;padding:8px 16px;font-size:13px;}
+.btn-danger{border:1px solid var(--red);background:#fff;color:var(--red);padding:6px 12px;font-size:12.5px;}
+.btn-sm{padding:5px 12px;font-size:12.5px;}
+button:disabled{opacity:.45;cursor:not-allowed;}
+
+/* table */
+.pa-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);}
+.pa-table th{background:var(--navy);color:#fff;font-size:14px;font-weight:600;padding:11px 12px;text-align:left;white-space:nowrap;}
+.pa-table td{border-top:1px solid var(--line);padding:10px 12px;font-size:14.5px;color:var(--body);vertical-align:middle;}
+/* 操作紀錄：固定欄寬，避免內容長度不一時撐高整列；「管理員」「對象」內容較不固定，
+   截長超過欄寬時用刪節號＋title 顯示完整內容，不佔用版面。*/
+.pa-table-audit{table-layout:fixed;}
+.pa-table-audit th:nth-child(1),.pa-table-audit td:nth-child(1){width:150px;}
+.pa-table-audit th:nth-child(2),.pa-table-audit td:nth-child(2){width:110px;}
+.pa-table-audit th:nth-child(3),.pa-table-audit td:nth-child(3){width:110px;}
+.pa-table-audit th:nth-child(5),.pa-table-audit td:nth-child(5){width:130px;}
+.pa-table-audit th:nth-child(6),.pa-table-audit td:nth-child(6){width:80px;}
+.pa-table-audit td:nth-child(1),.pa-table-audit td:nth-child(3){white-space:nowrap;}
+/* IPv6 比欄寬長很多；用換行而非省略號，安全紀錄的來源 IP 要能完整看到，不能被截斷。 */
+.pa-table-audit td:nth-child(5){word-break:break-all;}
+.pa-table-audit td:nth-child(2),.pa-table-audit td:nth-child(4){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pa-table tr:hover td{background:var(--cream);}
+.pa-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:3px;color:#fff;}
+.pa-vis-public{background:#5a6b7a;}
+.pa-vis-member{background:var(--accent);}
+.pa-st-published{color:var(--green);font-weight:600;}
+.pa-st-scheduled{color:var(--navy);font-weight:600;}
+.pa-st-draft{color:var(--muted);}
+.pa-st-archived{color:var(--red);}
+.pa-pin{background:var(--red);margin-right:6px;}
+.pa-test{background:#b45309;margin-right:6px;}
+/* 服務圖示選擇器 */
+.pa-iconpick-row{display:flex;align-items:center;gap:14px;margin:4px 0 8px;flex-wrap:wrap;}
+.pa-iconprev{width:46px;height:46px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;color:var(--navy);background:#fff;flex:0 0 auto;}
+.pa-iconpick{display:flex;flex-wrap:wrap;gap:6px;}
+.pa-iconpick-cell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;color:var(--body);border-radius:6px;cursor:pointer;}
+.pa-iconpick-cell:hover{border-color:var(--navy);color:var(--navy);}
+.pa-iconpick-on{border-color:var(--accent);color:var(--accent);background:#fbf7ef;box-shadow:inset 0 0 0 1px var(--accent);}
+.pa-iconpick-adv{margin-top:4px;}
+.pa-iconpick-adv summary{font-size:12px;color:var(--muted);cursor:pointer;}
+.pa-iconpick-adv input{margin-top:6px;}
+.pa-actions{display:flex;gap:8px;white-space:nowrap;}
+/* 表格捲動提示：左右漸層，只有可橫向捲動時（手機）才顯示 */
+.pa-tablewrap{position:relative;}
+.pa-tablewrap::before,.pa-tablewrap::after{content:"";position:absolute;top:0;bottom:0;width:22px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:2;}
+.pa-tablewrap::before{left:0;background:linear-gradient(to right,rgba(31,58,95,.20),rgba(31,58,95,0));}
+.pa-tablewrap::after{right:0;background:linear-gradient(to left,rgba(31,58,95,.20),rgba(31,58,95,0));}
+.pa-tablewrap.can-left::before{opacity:1;}
+.pa-tablewrap.can-right::after{opacity:1;}
+
+/* form */
+.pa-form{background:#fff;border:1px solid var(--line);padding:24px;max-width:760px;}
+.pa-form-row{display:flex;gap:16px;flex-wrap:wrap;}
+.pa-form-row .pa-field{flex:1;min-width:180px;}
+/* 設定區的核取方塊列：緊接欄位列下方，與其視為同一組 */
+.pa-checkrow{display:flex;flex-wrap:wrap;align-items:center;margin:2px 0 14px;}
+.pa-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--body);margin-right:20px;}
+.pa-check input{width:16px;height:16px;}
+.pa-form-foot{display:flex;gap:10px;margin-top:18px;align-items:center;}
+.pa-hint{font-size:12px;color:var(--muted);margin-top:4px;}
+/* 會員照片預覽（3:4 證件照，與前台名錄一致） */
+.pa-photo-preview{width:90px;height:120px;object-fit:cover;border:1px solid var(--line);background:#eef1f4;flex-shrink:0;}
+/* 輪播背景圖：表單內寬版 16:9 預覽；列表縮圖同比例，未設定時以格紋示意藍格紋底 */
+.pa-img-preview-wide{width:240px;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--line);background:#eef1f4;flex-shrink:0;}
+.pa-cell-thumb{display:block;width:72px;height:40px;object-fit:cover;border:1px solid var(--line);background:#eef1f4;}
+.pa-cell-thumb-none{background:repeating-linear-gradient(45deg,#dfe6ef 0 4px,#eef1f4 4px 8px);}
+/* 一次性顯示的產生密碼（不入庫，關閉即無法再取得） */
+.pa-genpw{margin-top:10px;padding:12px 14px;background:#fdf6e3;border-left:3px solid var(--accent);font-size:13px;line-height:1.8;}
+.pa-genpw-val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;color:var(--navy);user-select:all;}
+/* 欄位說明 (i) 圖示 + 點擊 tooltip */
+.pa-tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:6px;padding:0;border:1px solid var(--muted);color:var(--muted);background:#fff;border-radius:50%;font:italic 700 11px/1 Georgia,serif;cursor:pointer;vertical-align:middle;}
+.pa-tip:hover{border-color:var(--navy);color:var(--navy);}
+/* 用 .pa-tip 前綴提高特異性，避免被 .pa-field span 覆蓋（顏色/字重）*/
+.pa-tip .pa-tip-bubble{display:none;position:absolute;left:50%;top:160%;transform:translateX(-50%);width:250px;max-width:72vw;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:400;font-style:normal;line-height:1.6;letter-spacing:normal;text-align:left;padding:9px 11px;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:30;white-space:normal;}
+.pa-tip .pa-tip-bubble::before{content:"";position:absolute;left:50%;bottom:100%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:var(--navy);}
+.pa-tip.pa-tip-open .pa-tip-bubble{display:block;}
+.pa-note{background:var(--cream);border-left:3px solid var(--accent);padding:10px 14px;font-size:13px;color:var(--body);margin:12px 0;}
+.pa-loading{padding:60px;text-align:center;color:var(--muted);}
+textarea{resize:vertical;}
+/* module nav */
+.pa-nav{background:#fff;border-bottom:1px solid var(--line);padding:0 22px;display:flex;gap:2px;overflow-x:auto;}
+.pa-navbtn{border:none;background:none;padding:13px 16px;font-size:14px;color:var(--body);border-bottom:3px solid transparent;white-space:nowrap;}
+.pa-navbtn:hover{color:var(--navy);}
+.pa-navbtn-active{color:var(--navy);font-weight:700;border-bottom-color:var(--accent);}
+.pa-subnav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+.pa-subbtn{border:1px solid var(--line);background:#fff;padding:7px 14px;font-size:13px;color:var(--body);}
+.pa-subbtn-active{background:var(--navy);border-color:var(--navy);color:#fff;}
+/* 會費／福利金：負數（核銷支用）標紅、餘額為 0 標灰 */
+.pa-fee-unpaid{color:var(--red);font-weight:600;}
+.pa-fee-zero{color:var(--muted);}
+/* 批次作業的對象會籍勾選：人數即時標示，執行前就看得到影響範圍 */
+.pa-statuspick{border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:10px 0;margin:0 0 12px;}
+.pa-statuspick-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.pa-statuspick-label{font-size:13px;font-weight:700;color:var(--navy);margin-right:10px;}
+.pa-statuspick .pa-hint{margin:8px 0 0;}
+.pa-target{font-weight:700;color:var(--navy);margin-left:4px;}
+/* 批次開徵／發放面板 */
+.pa-levy{border:1px solid var(--line);border-left:3px solid var(--accent);background:#fbfaf7;padding:14px 16px;margin-bottom:16px;}
+.pa-levy p{margin:0 0 10px;}
+/* 表格內的文字連結（如附件頁的所屬公告） */
+.pa-link{color:var(--navy);text-decoration:underline;text-underline-offset:2px;}
+.pa-link:hover{color:var(--accent);}
+/* 篩選列：緊接排序列下方時要貼齊上一列（pa-subbtn），其餘外觀（含 input／select 邊框）
+   一律靠下面這條規則，不管在哪個容器（篩選列、批次面板、表格就地編輯欄）都一致，
+   不能一個地方補邊框、另一個地方漏掉。 */
+.pa-filterrow{margin-top:-10px;}
+.pa-subnav input,.pa-subnav select,.pa-levy input,.pa-levy select,.pa-table td input,.pa-table td select{
+  border:1px solid var(--line);background:#fff;padding:6px 10px;font-size:13px;color:var(--ink);outline:none;}
+.pa-subnav input:focus,.pa-subnav select:focus,.pa-levy input:focus,.pa-levy select:focus,
+.pa-table td input:focus,.pa-table td select:focus{border-color:var(--navy);}
+.pa-photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.pa-photo-thumb{width:120px;text-align:center;}
+.pa-photo-thumb img{width:120px;height:90px;object-fit:cover;border:1px solid var(--line);display:block;margin-bottom:4px;}
+/* 輪播按鈕編輯器：每顆按鈕一張小卡 */
+.pa-btnlist{display:flex;flex-direction:column;gap:10px;margin:6px 0 10px;}
+.pa-btnrow{border:1px solid var(--line);border-left:3px solid var(--accent);background:#fbfaf7;padding:12px 14px;}
+.pa-btnrow-grid{display:flex;gap:12px;flex-wrap:wrap;}
+.pa-btnrow-grid .pa-field{flex:1;min-width:150px;margin-bottom:0;}
+.pa-btnrow-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap;}
+.pa-btnrow-foot .pa-check{margin:0;}
+
+/* 富文本編輯器（TinyMCE 自架）：tox-* 由 TinyMCE 自帶樣式，這裡只處理 fallback textarea */
+.pa-richtext{width:100%;min-height:300px;}
+.tox-tinymce{border-color:var(--line)!important;}
+
+/* ── 手機版（≤720px）：桌面版不受影響 ── */
+@media (max-width:720px){
+  body{font-size:13.5px;}
+  /* 頂部列：縮間距、允許換行 */
+  .pa-top{height:auto;min-height:54px;padding:8px 12px;flex-wrap:wrap;gap:6px 10px;}
+  .pa-top-brand{font-size:14px;gap:7px;}
+  .pa-top-brand img{width:22px;height:22px;}
+  .pa-top-right{gap:8px;font-size:12px;flex-wrap:wrap;justify-content:flex-end;}
+  .pa-top-right>span{white-space:nowrap;}
+  .pa-top-right .btn-sm{padding:4px 9px;font-size:12px;}
+  /* 模組導覽：縮 padding（仍可橫向滑） */
+  .pa-nav{padding:0 8px;}
+  .pa-navbtn{padding:11px 12px;font-size:13.5px;}
+  /* 內容區 */
+  .pa-wrap{padding:16px 12px 48px;}
+  /* 區塊標題列改直向堆疊，主要按鈕滿版 */
+  .pa-h{flex-direction:column;align-items:stretch;gap:10px;}
+  .pa-h h2{font-size:17px;}
+  .pa-h .btn,.pa-h .btn-accent,.pa-h .btn-ghost{width:100%;}
+  /* 資料表格：改可橫向捲動，內容不被切 */
+  .pa-table{display:block;width:100%;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+  /* 寬表格（≥5 欄）在手機改為卡片式：一筆一張卡，欄名顯示於左 */
+  .pa-table.pa-cards{display:block;overflow:visible;white-space:normal;border:0;background:none;}
+  .pa-cards thead{display:none;}
+  .pa-cards tbody{display:block;}
+  .pa-cards tr{display:block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 12px;margin-bottom:10px;}
+  .pa-cards tr:hover td{background:none;}
+  .pa-cards td{display:flex;gap:12px;align-items:center;border:0;border-top:1px solid #eef1f4;padding:8px 0;font-size:14.5px;}
+  .pa-cards tr td:first-child{border-top:0;}
+  .pa-cards td::before{content:attr(data-label);flex:0 0 5.5em;color:var(--muted);font-weight:600;}
+  .pa-cards td:not([data-label])::before,.pa-cards td[data-label=""]::before{display:none;}
+  .pa-cards td[colspan]{justify-content:center;color:var(--muted);}
+  .pa-cards .pa-actions{margin-left:auto;}
+  /* 表單：縮 padding、欄位單欄、底部按鈕平均分配 */
+  .pa-form{padding:16px;}
+  .pa-form-row{gap:12px;}
+  .pa-form-row .pa-field{flex:1 1 100%;min-width:0;}
+  .pa-form-foot{flex-wrap:wrap;}
+  .pa-form-foot .btn,.pa-form-foot .btn-accent,.pa-form-foot .btn-ghost{flex:1;}
+  /* 登入卡片 */
+  .pa-login-card{padding:26px 20px;}
+}

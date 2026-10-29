@@ -1,0 +1,29 @@
+{
+  "name": "paa-ur-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --env dev",
+    "deploy:dev": "wrangler deploy --env dev",
+    "deploy:prod": "wrangler deploy --env prod",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:dev:local": "wrangler d1 migrations apply paa-ur-db-dev --local --env dev",
+    "db:migrate:dev": "wrangler d1 migrations apply paa-ur-db-dev --remote --env dev",
+    "db:migrate:prod": "wrangler d1 migrations apply paa-ur-db --remote --env prod",
+    "seed:gen": "node scripts/gen-seed.mjs > seeds/0001_content.sql",
+    "seed:dev:local": "wrangler d1 execute paa-ur-db-dev --local --env dev --file=seeds/0001_content.sql",
+    "seed:dev": "wrangler d1 execute paa-ur-db-dev --remote --env dev --file=seeds/0001_content.sql",
+    "backup:dev": "NODE_NO_WARNINGS=1 node scripts/backup.mjs --env dev",
+    "backup:prod": "NODE_NO_WARNINGS=1 node scripts/backup.mjs --env prod",
+    "backup:verify:dev": "NODE_NO_WARNINGS=1 node scripts/verify-backup.mjs --env dev",
+    "backup:verify:prod": "NODE_NO_WARNINGS=1 node scripts/verify-backup.mjs --env prod"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "paa-ur-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PAA Urban Regeneration — 資訊布達網站（Cloudflare Worker + 靜態前端；自 paa-web 精簡而來）",
+  "scripts": {
+    "build": "node build.mjs --mode prod",
+    "build:dev": "node build.mjs --mode dev",
+    "watch": "node build.mjs --mode dev --watch",
+    "dev": "node build.mjs --mode dev && cd api && npx wrangler dev --env dev",
+    "deploy:dev": "node build.mjs --mode prod && cd api && npx wrangler deploy --env dev",
+    "deploy:prod": "node build.mjs --mode prod && cd api && npx wrangler deploy --env prod",
+    "gen:seed": "cd api && node scripts/gen-seed.mjs > seeds/0001_content.sql",
+    "hash": "cd api && node scripts/hash-password.mjs",
+    "typecheck": "cd api && npx tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
