@@ -76,4 +76,7 @@ for (const [key, doc] of Object.entries(window.DEMO_LEGAL)) {
   w(`UPDATE legal_pages SET blocks=${j(doc.blocks || [])} WHERE "key"=${q(key)};`);
 }
 
+// ── 聯絡資訊（列已由 migration 建立）──────────────────────
+w(`UPDATE settings SET "value"=${j(window.DEMO_CONTACT)} WHERE "key"='contact';`);
+
 process.stdout.write(out.join('\n') + '\n');

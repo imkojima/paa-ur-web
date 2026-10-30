@@ -1,8 +1,8 @@
 // SEO 階段 3：依路徑解析每頁 meta（標題／描述／OG 圖／JSON-LD），並以 HTMLRewriter 注入殼層。
 // 供爬蟲與社群預覽取得「每則公告」正確的標題、摘要與封面。
 
-const SITE = '社團法人澎湖縣建築師公會';
-const SITE_DESC = '社團法人澎湖縣建築師公會官方網站 — 最新公告、服務項目、檔案下載、活動相簿、會員專區與聯絡資訊。';
+const SITE = '老舊建物機能復新專區'; // 暫用站名；與 web/index.html、web/assets/app.js 的 SITE_NAME 同步
+const SITE_DESC = '老舊建物機能復新專區 — 最新公告、申請文件下載與聯絡資訊。';
 
 type Env = { DB: D1Database };
 export type PageMeta = {
@@ -11,9 +11,9 @@ export type PageMeta = {
 };
 
 const STATIC: Record<string, { title: string; desc: string; noindex?: boolean }> = {
-  news: { title: '最新公告', desc: '公文轉知、公會活動、教育訓練、競圖採購等本會最新消息。' },
-  downloads: { title: '檔案下載', desc: '本會表單、文件與相關資源下載。' },
-  contact: { title: '聯絡我們', desc: '本會會址、電話、傳真與電子郵件等聯絡資訊。' },
+  news: { title: '最新公告', desc: '計畫相關公告、新聞稿與活動訊息。' },
+  downloads: { title: '檔案下載', desc: '申請表單、文件與相關資源下載。' },
+  contact: { title: '聯絡我們', desc: '地址、電話與電子郵件等聯絡資訊。' },
   privacy: { title: '隱私權政策', desc: '本網站隱私權政策說明。' },
   terms: { title: '網站使用條款', desc: '本網站使用條款說明。' },
   sitemap: { title: '網站地圖', desc: '本網站頁面索引。' },

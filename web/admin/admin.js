@@ -163,13 +163,14 @@
         { col: 'sort_order', label: '排序', type: 'int' }, { col: 'is_active', label: '啟用', type: 'bool' },
       ] },
     hero: { title: '首頁輪播', api: '/hero',
-      cols: [['background_image', '背景圖', 'img'], ['title', '標題'], ['eyebrow', '眉標'], ['sort_order', '排序'], ['is_active', '啟用', 'bool']],
+      cols: [['background_image', '圖片', 'img'], ['title', '標題'], ['eyebrow', '眉標'], ['sort_order', '排序'], ['is_active', '啟用', 'bool']],
       fields: [
-        { col: 'title', label: '標題（可含 <br>）', req: true }, { col: 'eyebrow', label: '眉標（如 NEWS · 最新消息）' },
-        { col: 'description', label: '說明', type: 'textarea' },
-        { col: 'background_image', label: '背景圖', type: 'image', prefix: 'hero', emptyText: '未設定背景圖（前台顯示預設藍格紋底）',
-          hint: '建議橫式、寬 1920px 以上的 JPG／WebP，檔案 2MB 內載入較快（上限 15MB）；文字會壓在圖上，畫面偏暗、主體置右的照片效果最好。選好後按最下方「儲存」才會實際上傳並替換舊圖。' },
-        { col: 'buttons', label: '按鈕', type: 'buttons', max: 3, hint: '每張投影片最多 3 顆按鈕。「連結到」選站內頁面或「任意網站」；最新公告、檔案下載可再指定要開到哪個分類，其餘頁面沒有參數。' },
+        { col: 'title', label: '標題（可含 <br>）', req: true, hint: '有上傳圖片時，標題不會顯示在畫面上，改作為圖片的替代文字（給螢幕報讀與搜尋引擎），請填圖片的主要內容。' },
+        { col: 'eyebrow', label: '眉標（如 NEWS · 最新消息；有圖片時不顯示）' },
+        { col: 'description', label: '說明（有圖片時不顯示）', type: 'textarea' },
+        { col: 'background_image', label: '圖片', type: 'image', prefix: 'hero', emptyText: '未設定圖片（前台以文字版主視覺呈現）',
+          hint: '上傳後前台會完整顯示整張圖片、不裁切也不疊文字，適合已排好文字與 logo 的海報或橫幅。建議橫式、寬 1600px 以上的 JPG／WebP，檔案 2MB 內載入較快（上限 15MB）；寬螢幕上圖片最高約 560px，兩側以模糊底色補滿。選好後按最下方「儲存」才會實際上傳並替換舊圖。' },
+        { col: 'buttons', label: '按鈕', type: 'buttons', max: 3, hint: '沒有圖片時，按鈕顯示在標題下方（最多 3 顆）；有圖片時不顯示按鈕，改以第一顆按鈕的目的地作為點擊圖片的連結。「連結到」選站內頁面或「任意網站」；最新公告、檔案下載可再指定分類。' },
         { col: 'sort_order', label: '排序', type: 'int' }, { col: 'is_active', label: '啟用', type: 'bool' },
       ] },
     documents: { title: '檔案', api: '/documents', paginate: true, searchable: '搜尋檔名…', filterable: 'category_id', download: 'file_path',
@@ -206,7 +207,7 @@
   // 欄位顯示：hint='bool' → ✓/—；hint 為物件 → 當對照表（值→顯示文字）；其餘原樣。
   const fmtCell = (v, hint) => {
     if (hint === 'bool') return v ? '✓' : '—';
-    if (hint === 'img') return v ? h('img', { className: 'pa-cell-thumb', src: assetUrl(v), alt: '' }) : h('span', { className: 'pa-cell-thumb pa-cell-thumb-none', title: '未設定背景圖（藍格紋底）' });
+    if (hint === 'img') return v ? h('img', { className: 'pa-cell-thumb', src: assetUrl(v), alt: '' }) : h('span', { className: 'pa-cell-thumb pa-cell-thumb-none', title: '未設定圖片（文字版主視覺）' });
     if (hint && typeof hint === 'object') return hint[v] != null ? hint[v] : (v == null ? '' : String(v));
     return v == null ? '' : String(v);
   };
@@ -288,7 +289,7 @@
   // 後台各處共用的 DEV/PROD 徽章（登入頁、已登入後的頂列都用這個，樣式與判斷邏輯只寫一處）。
   const envBadge = () => h('span', { className: 'pa-env' }, env === 'dev' ? 'DEV' : 'PROD');
   // 測試站橫幅：比角落那個小徽章明顯得多，登入頁跟登入後的畫面都會在最上方加這條。
-  const testBanner = () => h('div', { className: 'pa-testbanner' }, '⚠ 這是測試站，非本會正式後台，資料僅供測試');
+  const testBanner = () => h('div', { className: 'pa-testbanner' }, '測試站：資料僅供測試，非正式後台');
   async function mountTurnstile(container) {
     try {
       const cfg = await fetch('/api/config').then((r) => r.json());
@@ -354,7 +355,7 @@
     app.appendChild(h('div', { className: 'pa-login' },
       h('form', { className: 'pa-login-card', onSubmit: submit },
         h('h1', null, '後台管理 ', envBadge()),
-        h('p', null, '社團法人澎湖縣建築師公會'),
+        h('p', null, '老舊建物機能復新專區'),
         h('label', { className: 'pa-field' }, h('span', null, '帳號'), u),
         h('label', { className: 'pa-field' }, h('span', null, '密碼'), p),
         tsBox,
@@ -368,7 +369,7 @@
     app.innerHTML = '';
     if (env === 'dev') app.appendChild(testBanner());
     app.appendChild(h('div', { className: 'pa-top' },
-      h('div', { className: 'pa-top-brand' }, h('img', { src: '../assets/logo.png', alt: '' }), '公會後台', envBadge()),
+      h('div', { className: 'pa-top-brand' }, h('img', { src: '../assets/favicon.svg', alt: '' }), '網站後台', envBadge()),
       h('div', { className: 'pa-top-right' },
         h('span', null, me.name + '（' + me.role + '）'),
         h('button', { className: 'btn-ghost btn-sm', onClick: () => goAdmin('change-password') }, '變更密碼'),

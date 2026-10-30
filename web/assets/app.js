@@ -52,16 +52,6 @@
     if (p.length !== 3) return String(iso);
     return (Number(p[0]) - 1911) + '.' + p[1] + '.' + p[2];
   };
-  // Cloudflare Image Transformations：自訂網域才啟用（workers.dev/本機回原圖，等於 no-op）。
-  // 正式網域上線後於 zone 啟用 Image Transformations 即自動生效，前端不需再改。
-  const imgUrl = (src, w) => {
-    if (!src) return src;
-    const host = location.hostname;
-    if (host.endsWith('.workers.dev') || host === 'localhost' || host === '127.0.0.1') return src;
-    if (/^https?:\/\//i.test(src)) return src; // 外部圖維持原樣
-    const s = src.charAt(0) === '/' ? src : '/' + src;
-    return '/cdn-cgi/image/width=' + w + ',quality=80,format=auto' + s;
-  };
   const fmtBytes = (n) => {
     if (n == null) return '';
     if (n >= 1048576) return (n / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB';
@@ -91,17 +81,18 @@
   const root = document.getElementById('root');
   let route = { page: 'home', arg: null };
 
-  // 主選單（前端執行期設定；其餘 demo 資料已移至 api/seeds/demo-data.js）
-  const PAA_NAV = [
+  // 主選單
+  const NAV = [
     { id: 'home', label: '首頁' },
     { id: 'news', label: '最新公告' },
     { id: 'downloads', label: '檔案下載' },
     { id: 'contact', label: '聯絡我們' },
   ];
 
-  // ── 每頁標題／描述（SEO 階段 1：前端動態 <title> 與 description）─────────────
-  const SITE_NAME = '社團法人澎湖縣建築師公會';
-  const DEFAULT_DESC = '社團法人澎湖縣建築師公會官方網站 — 最新公告、檔案下載與聯絡資訊。';
+  // ── 站名與每頁標題／描述 ─────────────────────────────────────────────────
+  // 站名為品牌定案前的暫用名稱；改名時 web/index.html 與 api/src/meta.ts 要一起改。
+  const SITE_NAME = '老舊建物機能復新專區';
+  const DEFAULT_DESC = SITE_NAME + ' — 最新公告、申請文件下載與聯絡資訊。';
   const PAGE_TITLES = {
     home: '', news: '最新公告', downloads: '檔案下載', contact: '聯絡我們',
     privacy: '隱私權政策', terms: '網站使用條款', sitemap: '網站地圖', article: '最新公告',
@@ -110,11 +101,11 @@
     let t = PAGE_TITLES[r.page] || '';
     // 詳細頁：直接從已渲染的 DOM 取標題（公告），無需改各頁函式
     if (view && view.querySelector) {
-      const art = view.querySelector('.paa-article-title');
+      const art = view.querySelector('.ur-article-title');
       if (art && art.textContent.trim()) t = art.textContent.trim();
       else if ((r.page === 'news' || r.page === 'downloads') && r.arg) {
-        // 分類頁：網址帶的是分類 id，名稱從已渲染的分類 tab 取
-        const tab = view.querySelector('.paa-news-tab-active');
+        // 分類頁：網址帶的是分類 id，名稱從已渲染的分類鈕取
+        const tab = view.querySelector('.ur-chip.is-active');
         if (tab && tab.textContent.trim() && tab.textContent.trim() !== '全部') t = tab.textContent.trim();
       }
     }
@@ -177,84 +168,80 @@
     return h('a', Object.assign({ href: routeToPath({ page, arg }), 'data-link': '1' }, attrs || {}), ...kids);
   }
 
-  // ── chrome: header / nav / drawer ────────────────────────────────────────
-  // 測試站橫幅：比頁首那句「（測試）」明顯得多，放在整個頁面最上方、頁首正上面。
+  // ── chrome: header / footer ──────────────────────────────────────────────
   function TestBanner() {
-    return h('div', { className: 'paa-testbanner' }, '⚠ 這是測試站，非本會正式網站，資料僅供測試');
+    return h('div', { className: 'ur-testbanner' }, '測試站：資料僅供測試，非正式網站');
   }
 
+  // 手機版選單只是把同一份 nav 展開（.is-open）；點任何連結都會重繪整頁，選單自然收合。
   function Header(page) {
-    let menuOpen = false;
     const activeId = page === 'article' ? 'news' : page;
-
-    const ham = h('button', { className: 'paa-hamburger', 'aria-label': '選單',
-      onClick: () => { menuOpen = !menuOpen; sync(); } },
+    const toggle = h('button', { className: 'ur-menu-btn', type: 'button', 'aria-label': '選單', 'aria-expanded': 'false',
+      onClick: () => { toggle.setAttribute('aria-expanded', String(header.classList.toggle('is-open'))); } },
       h('span'), h('span'), h('span'));
+    const header = h('header', { className: 'ur-header' },
+      h('div', { className: 'ur-wrap ur-header-inner' },
+        link('home', null, { className: 'ur-brand' }, SITE_NAME + testTag()),
+        toggle,
+        h('nav', { className: 'ur-nav', 'aria-label': '主選單' },
+          NAV.map((n) => link(n.id, null, {
+            className: 'ur-nav-item' + (activeId === n.id ? ' is-active' : ''),
+            'aria-current': activeId === n.id ? 'page' : null,
+          }, n.label)))));
+    return header;
+  }
 
-    const drawer = h('div', { className: 'paa-drawer' },
-      PAA_NAV.map((n) => link(n.id, null, {
-        className: 'paa-drawer-item' + (activeId === n.id ? ' paa-drawer-active' : '') + (n.accent ? ' paa-drawer-accent' : ''),
-      }, h('span', null, n.label))));
-
-    const backdrop = h('div', { className: 'paa-drawer-backdrop',
-      onClick: () => { menuOpen = false; sync(); } });
-
-    function sync() {
-      Array.from(ham.children).forEach((s) => { s.className = menuOpen ? 'paa-ham-x' : ''; });
-      drawer.className = 'paa-drawer' + (menuOpen ? ' paa-drawer-open' : '');
-      backdrop.style.display = menuOpen ? '' : 'none';
-    }
-    backdrop.style.display = 'none';
-
-    const util = h('div', { className: 'paa-utility-links' },
-      link('sitemap', null, null, '網站導覽'),
-      h('span', { className: 'paa-util-sep' }, '|'),
-      link('contact', null, null, '聯絡我們'));
-
-    return h('header', { className: 'paa-header-root' },
-      h('div', { className: 'paa-utility' },
-        h('div', { className: 'paa-wrap paa-utility-inner' },
-          h('div', { className: 'paa-utility-org' }, '社團法人澎湖縣建築師公會' + testTag() + '　PENGHU ARCHITECTS ASSOCIATION'),
-          util)),
-      h('div', { className: 'paa-brandrow' },
-        h('div', { className: 'paa-wrap paa-brandrow-inner' },
-          link('home', null, { className: 'paa-brand' },
-            h('img', { className: 'paa-brand-mark', src: 'assets/logo.png', alt: '社團法人澎湖縣建築師公會 會徽', width: '54', height: '54' }),
-            h('span', { className: 'paa-brand-text' },
-              h('span', { className: 'paa-brand-zh' }, '社團法人澎湖縣建築師公會'),
-              h('span', { className: 'paa-brand-en' }, 'PENGHU ARCHITECTS ASSOCIATION'))),
-          ham)),
-      h('nav', { className: 'paa-nav' },
-        h('div', { className: 'paa-wrap paa-nav-inner' },
-          PAA_NAV.map((n) => link(n.id, null, {
-            className: 'paa-nav-item' + (activeId === n.id ? ' paa-nav-active' : '') + (n.accent ? ' paa-nav-accent' : ''),
-          }, h('span', { className: 'paa-nav-zh' }, n.label))))),
-      drawer,
-      backdrop);
+  // 聯絡資訊來自後台「設定」；資料晚到再補上，不擋頁面渲染。
+  function Footer() {
+    const info = h('div', { className: 'ur-footer-info' });
+    store.contact().then((res) => {
+      const c = (res && res.contact) || {};
+      [['地址', c.address], ['電話', c.tel], ['傳真', c.fax], ['信箱', c.email]]
+        .filter(([, v]) => v)
+        .forEach(([k, v]) => info.appendChild(h('span', null, k + '：' + v)));
+    }).catch(() => {});
+    return h('footer', { className: 'ur-footer' },
+      h('div', { className: 'ur-wrap ur-footer-inner' },
+        h('div', null,
+          h('div', { className: 'ur-footer-name' }, SITE_NAME),
+          info),
+        h('nav', { className: 'ur-footer-links', 'aria-label': '頁尾連結' },
+          link('privacy', null, null, '隱私權政策'),
+          link('terms', null, null, '網站使用條款'),
+          link('sitemap', null, null, '網站導覽'))),
+      h('div', { className: 'ur-wrap' }, h('div', { className: 'ur-footer-copy' }, '© ' + new Date().getFullYear() + ' ' + SITE_NAME)));
   }
 
   function Breadcrumb(trail) {
-    const inner = h('div', { className: 'paa-wrap paa-breadcrumb-inner' });
-    trail.forEach((t, i) => {
-      if (i > 0) inner.appendChild(h('span', { className: 'paa-bc-sep' }, '›'));
-      const last = i === trail.length - 1;
-      if (!last && t.page) inner.appendChild(link(t.page, t.arg || null, { className: 'paa-bc-link' }, t.label));
-      else inner.appendChild(h('span', { className: last ? 'paa-bc-current' : 'paa-bc-link', onClick: t.onClick }, t.label));
-    });
-    return h('div', { className: 'paa-breadcrumb' }, inner);
+    return h('nav', { className: 'ur-crumb', 'aria-label': '導覽路徑' },
+      trail.flatMap((t, i) => [
+        i > 0 ? h('span', { className: 'ur-crumb-sep', 'aria-hidden': 'true' }, '/') : null,
+        t.page ? link(t.page, t.arg || null, null, t.label) : h('span', { 'aria-current': 'page' }, t.label),
+      ]));
   }
 
-  function Heading(zh, en) {
-    return h('div', { className: 'paa-secheading' },
-      h('h2', { className: 'paa-secheading-zh' }, zh),
-      h('span', { className: 'paa-secheading-en' }, en));
+  function PageHead(title, trail) {
+    return h('div', { className: 'ur-pagehead' },
+      h('div', { className: 'ur-wrap' },
+        Breadcrumb([{ label: '首頁', page: 'home' }, ...(trail || [{ label: title }])]),
+        h('h1', { className: 'ur-pagehead-title' }, title)));
   }
 
-  function PageBanner(zh, en) {
-    return h('div', { className: 'paa-page-banner' },
-      h('div', { className: 'paa-wrap' },
-        h('h1', { className: 'paa-page-banner-zh' }, zh),
-        h('span', { className: 'paa-page-banner-en' }, en)));
+  function SectionHead(title, more) {
+    return h('div', { className: 'ur-sechead' },
+      h('h2', null, title),
+      more ? link(more.page, more.arg || null, { className: 'ur-more' }, more.label + ' →') : null);
+  }
+
+  // 分類篩選鈕（公告／檔案共用）；c=null 代表「全部」
+  function Chips(list, current, onPick) {
+    return h('div', { className: 'ur-chips', role: 'group', 'aria-label': '分類' },
+      [null, ...list].map((c) => h('button', {
+        type: 'button',
+        className: 'ur-chip' + (current === c ? ' is-active' : ''),
+        'aria-pressed': String(current === c),
+        onClick: () => onPick(c),
+      }, c ? c.name : '全部')));
   }
 
   // 從檔案清單推導分類（依 API 回傳順序＝後台排序）；同名分類以 id 區分
@@ -266,29 +253,28 @@
     }
     return out;
   }
-  function archiveCard(f, page, arg) {
-    return link(page, arg, { className: 'paa-archive-card' },
-      h('span', { className: 'paa-archive-doc' },
-        h('span', { className: 'paa-archive-doc-bar' }),
-        h('span', { className: 'paa-archive-doc-pdf' }, 'PDF')),
-      h('span', { className: 'paa-archive-text' },
-        h('span', { className: 'paa-archive-t' }, f.t),
-        f.d ? h('span', { className: 'paa-archive-d' }, f.d) : null,
-        h('span', { className: 'paa-archive-n' }, '📎 ' + f.n + ' 份檔案')));
+
+  function newsRow(item) {
+    return link('article', item.id, { className: 'ur-news-row' },
+      h('time', { className: 'ur-news-date', datetime: String(item.publish_date || '').slice(0, 10) }, isoToRoc(item.publish_date)),
+      h('span', { className: 'ur-tag' }, h('i', { style: { background: item.color } }), item.category),
+      h('span', { className: 'ur-news-title' },
+        item.is_pinned ? h('span', { className: 'ur-pin' }, '置頂') : null,
+        item.title));
   }
 
+  // 舊版區塊 JSON 內文（陣列）；新內容是 TinyMCE 產生的 HTML 字串
   function renderBlocks(body) {
     return body.map((blk) => {
-      if (blk.h) return h('h3', { className: 'paa-art-h' }, blk.h);
-      if (blk.p) return h('p', { className: 'paa-art-p' }, blk.p);
-      if (blk.list) return h('ul', { className: 'paa-art-ul' }, blk.list.map((li) => h('li', null, li)));
-      if (blk.table) return h('table', { className: 'paa-art-table' },
+      if (blk.h) return h('h3', null, blk.h);
+      if (blk.p) return h('p', null, blk.p);
+      if (blk.list) return h('ul', null, blk.list.map((li) => h('li', null, li)));
+      if (blk.table) return h('table', null,
         h('tbody', null, blk.table.map((row) => h('tr', null, h('th', null, row[0]), h('td', null, row[1])))));
       return null;
     });
   }
 
-  // 內文渲染：字串→視為 HTML（後台 Quill 產生，輕量淨化後輸出）；陣列→沿用區塊渲染（相容舊資料）
   function sanitizeHtml(html) {
     const t = document.createElement('div');
     t.innerHTML = String(html == null ? '' : html);
@@ -298,112 +284,94 @@
         if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name);
       });
     });
-    // 內文圖片：延遲載入＋非同步解碼（P4）
     t.querySelectorAll('img').forEach((im) => { im.setAttribute('loading', 'lazy'); im.setAttribute('decoding', 'async'); });
     return t.innerHTML;
   }
   function renderBody(body) {
-    if (typeof body === 'string') return [h('div', { html: sanitizeHtml(body) })];
-    return renderBlocks(body || []);
+    if (typeof body === 'string') return h('div', { className: 'ur-prose', html: sanitizeHtml(body) });
+    return h('div', { className: 'ur-prose' }, renderBlocks(body || []));
   }
 
-  // Attachment block (files: {name, size, type, url?, locked?}).
-  // locked = 限定存取（後端不吐 R2 key）：顯示檔名但不給下載。
-  function articleFiles(files) {
-    if (!files || !files.length) return null;
-    const note = h('div', { className: 'paa-files-note' }, '＊此附件尚未上傳實體檔案，敬請見諒。');
-    note.style.display = 'none';
-    return h('div', { className: 'paa-article-files' },
-      h('div', { className: 'paa-files-title' }, '附件下載'),
-      files.map((f) => {
-        const ty = (f.type || 'pdf').toUpperCase();
-        const tc = { PDF: '#a53030', DOC: '#1f3a5f', XLS: '#2d6a4f', IMG: '#b8924a' }[ty] || '#7a7d82';
-        const locked = !f.url && !!f.locked;
-        const inner = [
-          h('span', { className: 'paa-file-ic', style: { background: locked ? '#7a7d82' : tc } }, ty),
-          h('span', { className: 'paa-file-name' }, f.name),
-          f.date ? h('span', { className: 'paa-file-date' }, '更新 ' + f.date) : null,
-          h('span', { className: 'paa-file-size' }, f.size),
-          h('span', { className: 'paa-file-dl' }, locked ? '🔒 未開放' : '下載 ↓'),
-        ];
-        if (f.url) return h('a', { className: 'paa-file-row', href: f.url, target: '_blank', rel: 'noopener noreferrer', download: dlName(f.name, f.url) }, inner);
-        if (locked) return h('button', { className: 'paa-file-row paa-file-locked', disabled: true }, inner);
-        return h('button', { className: 'paa-file-row', onClick: () => { note.style.display = ''; } }, inner);
-      }),
-      note);
+  // 下載時要顯示的檔名：後台設定的「檔名」通常不含副檔名，直接拿來當下載檔名，
+  // Windows 會因為沒有副檔名而不知道用什麼開啟。這裡從實體檔網址補回來。
+  function dlName(name, url) {
+    if (!name) return '';
+    const m = String(url || '').match(/\.([a-z0-9]{1,8})(?:$|[?#])/i);
+    if (!m) return name;
+    return new RegExp('\\.' + m[1] + '$', 'i').test(name) ? name : name + '.' + m[1];
   }
 
-  function Footer() {
-    const cols = [
-      { links: [['最新公告', 'news'], ['檔案下載', 'downloads'], ['聯絡我們', 'contact']] },
+  // 檔案列（公告附件、檔案下載共用）。f: {name, size, type, date?, url?, locked?}
+  // 沒有實體檔或限定存取的檔案照列出來，點了只顯示說明（onMissing）。
+  function fileRow(f, onMissing) {
+    const kids = [
+      h('span', { className: 'ur-file-type' }, (f.type || 'pdf').toUpperCase()),
+      h('span', { className: 'ur-file-name' }, f.name),
+      h('span', { className: 'ur-file-meta' }, [f.date ? '更新 ' + f.date : null, f.size].filter(Boolean).join('・')),
+      h('span', { className: 'ur-file-act' }, f.locked ? '未開放' : f.url ? '下載' : '未上傳'),
     ];
-    return h('footer', { className: 'paa-footer' },
-      h('div', { className: 'paa-wrap paa-footer-inner' },
-        h('div', { className: 'paa-footer-main' },
-          h('div', { className: 'paa-footer-brand' },
-            h('img', { className: 'paa-footer-mark', src: 'assets/logo.png', alt: '社團法人澎湖縣建築師公會 會徽', width: '46', height: '46', loading: 'lazy' }),
-            h('span', null, '社團法人澎湖縣建築師公會')),
-          h('div', { className: 'paa-footer-info', html:
-            '會址：澎湖縣馬公市中興路13號<br>電話：(06) 927-1112　傳真：(06) 927-1132<br>電子郵件：penghu9271112@gmail.com' })),
-        cols.map((c) => h('div', { className: 'paa-footer-col' },
-          c.t ? h('div', { className: 'paa-footer-coltitle' }, c.t) : null,
-          c.links.map(([label, page]) => link(page, null, { className: 'paa-footer-link' }, label))))),
-      h('div', { className: 'paa-footer-legal' },
-        h('div', { className: 'paa-wrap paa-footer-legal-inner' },
-          h('div', { className: 'paa-footer-legal-links' },
-            link('privacy', null, null, '隱私權政策'),
-            h('span', { className: 'paa-legal-sep' }, '·'),
-            link('terms', null, null, '網站使用條款'),
-            h('span', { className: 'paa-legal-sep' }, '·'),
-            link('sitemap', null, null, '網站導覽')),
-          h('div', { className: 'paa-footer-legal-copy' }, '© 2026 Penghu Architects Association. All rights reserved.'))));
-  }
-
-  // ── hero carousel ────────────────────────────────────────────────────────
-  function heroSlide(s) {
-    const layers = [];
-    if (s.bg) {
-      layers.push(h('div', { className: 'paa-hero-bg', style: { backgroundImage: 'url(' + s.bg + ')' } }));
-      layers.push(h('div', { className: 'paa-hero-ov' }));
-    } else {
-      layers.push(h('div', { className: 'paa-hero-bg paa-hero-bg-grid' }));
+    if (f.url && !f.locked) {
+      return h('a', { className: 'ur-file', href: f.url, target: '_blank', rel: 'noopener noreferrer', download: dlName(f.name, f.url) }, kids);
     }
-    layers.push(h('div', { className: 'paa-wrap paa-hero-inner' },
-      s.eyebrow ? h('div', { className: 'paa-hero-eyebrow' }, s.eyebrow) : null,
-      h('h1', { className: 'paa-hero-title', html: s.title }),
-      s.desc ? h('p', { className: 'paa-hero-sub', html: s.desc }) : null,
-      (s.buttons && s.buttons.length)
-        ? h('div', { className: 'paa-hero-actions' },
-            s.buttons.map((bn) => bn.url
-              ? h('a', { className: bn.primary ? 'paa-btn-accent' : 'paa-btn-outline-light', href: bn.url, target: '_blank', rel: 'noopener noreferrer' }, bn.label)
-              : link(bn.page, bn.arg || null, { className: bn.primary ? 'paa-btn-accent' : 'paa-btn-outline-light' }, bn.label)))
-        : null));
-    return layers;
+    return h('button', { type: 'button', className: 'ur-file is-off',
+      onClick: () => onMissing(f.locked ? '「' + f.name + '」目前未開放下載。' : '「' + f.name + '」尚未上傳檔案。') }, kids);
+  }
+  function fileList(files) {
+    const note = h('p', { className: 'ur-note', role: 'status' });
+    note.hidden = true;
+    const show = (msg) => { note.textContent = msg; note.hidden = false; };
+    return h('div', null, h('div', { className: 'ur-files' }, files.map((f) => fileRow(f, show))), note);
   }
 
+  // ── hero ─────────────────────────────────────────────────────────────────
+  // 多張才輪播（6 秒、滑鼠移入暫停）；只有一張就是靜態主視覺。
+  // 有圖的投影片＝整張圖片橫幅：業主給的通常是文字、logo 都排好的海報，不能裁切也不能再疊字。
+  // 這時標題當替代文字，第一顆按鈕當圖片連結；眉標、說明不顯示。沒有圖才用文字版主視覺。
+  const plainText = (html) => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent.trim(); };
   function Hero(slides) {
+    if (!slides.length) return null;
     let active = 0, paused = false;
-    const stage = h('div', { className: 'paa-hero-stage' });
-    const dotBtns = slides.map((s, i) =>
-      h('button', { 'aria-label': '第 ' + (i + 1) + ' 張', onClick: () => goSlide(i) }));
-    const dotsWrap = h('div', { className: 'paa-hero-dots' }, dotBtns);
+    const inner = h('div', { className: 'ur-wrap ur-hero-inner' });
+    const dots = slides.length > 1
+      ? slides.map((s, i) => h('button', { type: 'button', 'aria-label': '第 ' + (i + 1) + ' 張', onClick: () => show(i) }))
+      : [];
+    const section = h('section', { className: 'ur-hero' }, inner,
+      dots.length ? h('div', { className: 'ur-wrap ur-hero-dots' }, dots) : null);
 
-    function renderStage() {
-      stage.innerHTML = '';
-      heroSlide(slides[active]).forEach((n) => stage.appendChild(n));
-      dotBtns.forEach((b, i) => { b.className = i === active ? 'paa-dot-active' : ''; });
+    function show(i) {
+      active = (i + slides.length) % slides.length;
+      const s = slides[active];
+      section.classList.toggle('ur-hero-pic', !!s.bg);
+      section.style.setProperty('--hero-bg', s.bg ? 'url("' + s.bg + '")' : 'none');
+      inner.innerHTML = '';
+      dots.forEach((d, j) => d.classList.toggle('is-active', j === active));
+      if (s.bg) {
+        const img = h('img', { className: 'ur-hero-img', src: s.bg, alt: plainText(s.title), decoding: 'async', fetchpriority: 'high' });
+        const bn = (s.buttons || [])[0];
+        inner.appendChild(!bn ? img
+          : bn.url ? h('a', { href: bn.url, target: '_blank', rel: 'noopener noreferrer' }, img)
+          : link(bn.page, bn.arg || null, null, img));
+        return;
+      }
+      if (s.eyebrow) inner.appendChild(h('div', { className: 'ur-hero-eyebrow' }, s.eyebrow));
+      inner.appendChild(h('h1', { className: 'ur-hero-title', html: s.title }));
+      if (s.desc) inner.appendChild(h('p', { className: 'ur-hero-desc', html: s.desc }));
+      if (s.buttons && s.buttons.length) {
+        inner.appendChild(h('div', { className: 'ur-hero-actions' },
+          s.buttons.map((bn) => {
+            const cls = bn.primary ? 'ur-btn ur-btn-primary' : 'ur-btn ur-btn-ghost';
+            return bn.url
+              ? h('a', { className: cls, href: bn.url, target: '_blank', rel: 'noopener noreferrer' }, bn.label)
+              : link(bn.page, bn.arg || null, { className: cls }, bn.label);
+          })));
+      }
     }
-    function goSlide(i) { active = (i + slides.length) % slides.length; renderStage(); }
-
-    const section = h('section', { className: 'paa-hero' },
-      stage,
-      h('button', { className: 'paa-hero-arrow paa-hero-arrow-prev', 'aria-label': '上一張', onClick: () => goSlide(active - 1) }, '‹'),
-      h('button', { className: 'paa-hero-arrow paa-hero-arrow-next', 'aria-label': '下一張', onClick: () => goSlide(active + 1) }, '›'),
-      dotsWrap);
-    section.addEventListener('mouseenter', () => { paused = true; });
-    section.addEventListener('mouseleave', () => { paused = false; });
-    timers.push(setInterval(() => { if (!paused) goSlide(active + 1); }, 6000));
-    renderStage();
+    if (dots.length) {
+      section.addEventListener('mouseenter', () => { paused = true; });
+      section.addEventListener('mouseleave', () => { paused = false; });
+      timers.push(setInterval(() => { if (!paused) show(active + 1); }, 6000));
+    }
+    show(0);
     return section;
   }
 
@@ -414,132 +382,78 @@
 
   // ── home page ────────────────────────────────────────────────────────────
   async function Home() {
-    const [home, downloads, friends] = await Promise.all([
-      store.home(), store.downloads(), store.friends(),
+    const [home, latest, downloads, friends] = await Promise.all([
+      store.home(), store.news({ page: 1, perPage: 6 }), store.downloads(), store.friends(),
     ]);
     const dlCats = uniqCats(downloads.items);
+    const links = friends.items.filter((f) => f.url);
 
-    return h('div', { className: 'paa-home' },
+    return h('div', null,
       Hero(home.hero.map(heroShape)),
-
-      h('section', { className: 'paa-wrap paa-home-mid' },
-        h('div', { className: 'paa-news-head' },
-          link('news', null, { className: 'paa-secheading paa-secheading-link' },
-            h('h2', { className: 'paa-secheading-zh' }, '最新公告'),
-            h('span', { className: 'paa-secheading-en' }, 'LATEST NEWS')),
-          link('news', null, { className: 'paa-news-more' }, '更多公告 +')),
-        h('div', { className: 'paa-catnews-grid paa-catnews-grid-' + Math.min(home.categories.length, 6) },
-          home.categories.slice(0, 6).map((cat) => {
-            const items = home.news[cat.name] || [];
-            return h('div', { className: 'paa-catnews-col' },
-              link('news', cat.id, { className: 'paa-catnews-head', style: { borderTopColor: cat.color } },
-                h('span', { className: 'paa-catnews-dot', style: { background: cat.color } }),
-                h('span', { className: 'paa-catnews-cat' }, cat.name),
-                h('span', { className: 'paa-catnews-arrow' }, '›')),
-              items.length
-                ? h('div', { className: 'paa-catnews-list' },
-                    items.map((item) => link('article', item.id, { className: 'paa-catnews-row' },
-                      h('span', { className: 'paa-catnews-meta' },
-                        item.is_pinned ? h('span', { className: 'paa-pin' }, '置頂') : null,
-                        h('span', { className: 'paa-catnews-date' }, isoToRoc(item.publish_date))),
-                      h('span', { className: 'paa-catnews-title' }, item.title))))
-                : h('div', { className: 'paa-catnews-empty' }, '尚無公告'));
-          }))),
-
-      h('section', { className: 'paa-wrap paa-archive' },
-        link('downloads', null, { className: 'paa-secheading paa-secheading-link' },
-          h('h2', { className: 'paa-secheading-zh' }, '檔案下載'),
-          h('span', { className: 'paa-secheading-en' }, 'DOWNLOADS')),
-        h('div', { className: 'paa-archive-grid' },
-          dlCats.map((ct) => archiveCard(
-            { t: ct.name, n: downloads.items.filter((f) => f.category_id === ct.id).length },
-            'downloads', ct.id)))),
-
-      h('section', { className: 'paa-friends' },
-        h('div', { className: 'paa-wrap' },
-          h('div', { className: 'paa-friends-head' },
-            h('span', { className: 'paa-friends-title' }, '相關連結'),
-            h('span', { className: 'paa-friends-en' }, 'RELATED LINKS'),
-            h('span', { className: 'paa-friends-rule' })),
-          h('div', { className: 'paa-friends-grid' },
-            friends.items.map((f) => f.url
-              ? h('a', { className: 'paa-friend', href: f.url, target: '_blank', rel: 'noopener noreferrer' },
-                  f.name, h('span', { className: 'paa-friend-ext' }, '↗'))
-              : h('button', { className: 'paa-friend paa-friend-pending', title: '外部連結建置中', onClick: () => {} }, f.name))))));
+      h('div', { className: 'ur-wrap ur-home' },
+        h('section', { className: 'ur-home-news' },
+          SectionHead('最新公告', { page: 'news', label: '所有公告' }),
+          latest.items.length
+            ? h('div', { className: 'ur-news-list' }, latest.items.map(newsRow))
+            : h('p', { className: 'ur-empty' }, '目前沒有公告。')),
+        h('aside', { className: 'ur-home-side' },
+          dlCats.length ? h('section', null,
+            SectionHead('檔案下載', { page: 'downloads', label: '全部' }),
+            h('ul', { className: 'ur-linklist' },
+              dlCats.map((ct) => h('li', null,
+                link('downloads', ct.id, null,
+                  h('span', null, ct.name),
+                  h('span', { className: 'ur-count' }, downloads.items.filter((f) => f.category_id === ct.id).length)))))) : null,
+          links.length ? h('section', null,
+            SectionHead('相關連結'),
+            h('ul', { className: 'ur-linklist' },
+              links.map((f) => h('li', null,
+                h('a', { href: f.url, target: '_blank', rel: 'noopener noreferrer' },
+                  h('span', null, f.name), h('span', { className: 'ur-ext', 'aria-hidden': 'true' }, '↗')))))) : null)));
   }
 
   // ── news list page ───────────────────────────────────────────────────────
   async function NewsList(initialCat) {
     const catsData = await store.categories();
     // cat：目前分類物件 {id,name,color}；null＝全部
-    let cat = findCat(catsData, initialCat), query = '', submitted = '', page = 1;
-    const perPage = 8;
+    let cat = findCat(catsData, initialCat), query = '', page = 1;
+    const perPage = 10;
 
-    const container = h('div', { className: 'paa-page' });
-    container.appendChild(Breadcrumb([{ label: '首頁', page: 'home' }, { label: '最新公告' }]));
-    container.appendChild(PageBanner('最新公告', 'LATEST NEWS & ANNOUNCEMENTS'));
-    const host = h('div'); container.appendChild(host);
+    const container = h('div', null, PageHead('最新公告'));
+    const host = h('div', { className: 'ur-wrap ur-page' });
+    container.appendChild(host);
+
+    const input = h('input', { type: 'search', className: 'ur-search-input', placeholder: '搜尋公告標題', 'aria-label': '搜尋公告標題' });
+    const searchForm = h('form', { className: 'ur-search', role: 'search',
+      onSubmit: (e) => { e.preventDefault(); query = input.value.trim(); page = 1; rebuild(); } },
+      input, h('button', { type: 'submit', className: 'ur-btn ur-btn-primary' }, '搜尋'));
+    const results = h('div');
+    host.append(h('div', { className: 'ur-toolbar' }, h('div', { className: 'ur-chips-slot' }), searchForm), results);
 
     async function rebuild() {
-      const data = await store.news({ category: cat ? cat.id : '', q: submitted.trim(), page, perPage });
-      const total = data.total;
-      const shown = data.items;
-      const totalPages = Math.max(1, Math.ceil(total / perPage));
-      const body = h('div', { className: 'paa-wrap paa-news-body' });
-
-      const input = h('input', { type: 'text', placeholder: '輸入關鍵字搜尋公告標題…', value: query,
-        onInput: (e) => { query = e.target.value; },
-        onKeyDown: (e) => { if (e.key === 'Enter') runSearch(); } });
-      const search = h('div', { className: 'paa-news-search' },
-        h('div', { html: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7a7d82" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>' }).firstElementChild,
-        input,
-        submitted ? h('button', { className: 'paa-news-search-clear', 'aria-label': '清除', onClick: clearSearch }, '×') : null);
-      body.appendChild(h('div', { className: 'paa-news-searchrow' },
-        search, h('button', { className: 'paa-news-search-btn', onClick: runSearch }, '搜尋')));
-
-      body.appendChild(h('div', { className: 'paa-news-tabs' },
-        [null, ...catsData].map((c) => h('button', {
-          className: 'paa-news-tab' + (cat === c ? ' paa-news-tab-active' : ''),
-          onClick: () => pickCat(c),
-        }, c ? h('span', { className: 'paa-tab-dot', style: { background: c.color } }) : null, c ? c.name : '全部')),
-        h('span', { className: 'paa-news-count' }, '共 ' + total + ' 筆')));
-
-      if (submitted.trim()) {
-        body.appendChild(h('div', { className: 'paa-news-resultnote' },
-          h('span', { html: '關鍵字「<strong>' + escapeHtml(submitted.trim()) + '</strong>」的搜尋結果，共 ' + total + ' 筆' }),
-          h('button', { onClick: clearSearch }, '清除搜尋')));
-      }
-
-      const list = h('div', { className: 'paa-newslist' });
-      if (shown.length === 0) list.appendChild(h('div', { className: 'paa-news-empty' }, '查無符合條件的公告，請調整關鍵字或分類。'));
-      shown.forEach((item) => {
-        const d = isoToRoc(item.publish_date);
-        list.appendChild(link('article', item.id, { className: 'paa-newslist-row' },
-          h('div', { className: 'paa-newslist-date' },
-            h('span', { className: 'paa-newslist-d-day' }, d.split('.').slice(1).join('/')),
-            h('span', { className: 'paa-newslist-d-year' }, '民國 ' + d.split('.')[0] + ' 年')),
-          h('div', { className: 'paa-newslist-main' },
-            h('div', { className: 'paa-newslist-meta' },
-              h('span', { className: 'paa-news-tag', style: { background: item.color } }, item.category),
-              item.is_pinned ? h('span', { className: 'paa-pin' }, '置頂') : null,
-              h('span', { className: 'paa-newslist-views' }, '瀏覽 ' + item.views)),
-            h('div', { className: 'paa-newslist-title' }, item.title),
-            h('div', { className: 'paa-newslist-excerpt' }, item.excerpt)),
-          h('div', { className: 'paa-newslist-arrow' }, '→')));
-      });
-      body.appendChild(list);
-
-      body.appendChild(h('div', { className: 'paa-pagination' },
-        h('button', { className: 'paa-pg-btn', disabled: page === 1, onClick: () => { page = Math.max(1, page - 1); rebuild(); } }, '‹ 上一頁'),
-        Array.from({ length: totalPages }).map((_, i) =>
-          h('button', { className: 'paa-pg-num' + (page === i + 1 ? ' paa-pg-active' : ''), onClick: () => { page = i + 1; rebuild(); } }, i + 1)),
-        h('button', { className: 'paa-pg-btn', disabled: page === totalPages, onClick: () => { page = Math.min(totalPages, page + 1); rebuild(); } }, '下一頁 ›')));
-
-      host.innerHTML = ''; host.appendChild(body);
+      host.querySelector('.ur-chips-slot').replaceChildren(Chips(catsData, cat, pickCat));
+      const data = await store.news({ category: cat ? cat.id : '', q: query, page, perPage });
+      const totalPages = Math.max(1, Math.ceil(data.total / perPage));
+      results.replaceChildren(...[
+        h('p', { className: 'ur-resultnote' },
+          query ? ['「', h('strong', null, query), '」的搜尋結果，'] : null,
+          '共 ' + data.total + ' 筆',
+          query ? h('button', { type: 'button', className: 'ur-linkbtn',
+            onClick: () => { query = ''; input.value = ''; page = 1; rebuild(); } }, '清除搜尋') : null),
+        data.items.length
+          ? h('div', { className: 'ur-news-list' }, data.items.map(newsRow))
+          : h('p', { className: 'ur-empty' }, '查無符合條件的公告。'),
+        totalPages > 1 ? h('nav', { className: 'ur-pager', 'aria-label': '分頁' },
+          h('button', { type: 'button', disabled: page === 1, onClick: () => { page -= 1; rebuild(); } }, '上一頁'),
+          Array.from({ length: totalPages }, (_, i) => h('button', {
+            type: 'button', className: page === i + 1 ? 'is-active' : null,
+            'aria-current': page === i + 1 ? 'page' : null,
+            onClick: () => { page = i + 1; rebuild(); },
+          }, i + 1)),
+          h('button', { type: 'button', disabled: page === totalPages, onClick: () => { page += 1; rebuild(); } }, '下一頁')) : null,
+      ].filter(Boolean));
     }
     async function pickCat(c) { cat = c; page = 1; await rebuild(); setUrl('news', cat ? cat.id : null, container); }
-    function runSearch() { submitted = query; page = 1; rebuild(); }
-    function clearSearch() { query = ''; submitted = ''; page = 1; rebuild(); }
 
     await rebuild();
     return container;
@@ -552,8 +466,7 @@
     const list = listData.items;
     const idx = list.findIndex((n) => n.id === item.id);
     const prev = list[idx - 1], next = list[idx + 1];
-    // 沒填內文就留白：補一段「內容整理中」的樣板文字，讀者得讀完才發現沒有資訊，
-    // 比空白更擾人。摘要若有就當內文用——那是承辦人真的打過的字。
+    // 沒填內文時，摘要若有就當內文用
     const body = (item.body && item.body.length) ? item.body : (item.excerpt ? [{ p: item.excerpt }] : []);
     const files = (item.files || []).map((f) => ({
       name: f.name, size: fmtBytes(f.size_bytes), type: f.type, date: isoToRoc(f.file_date),
@@ -561,246 +474,115 @@
       locked: f.access === 'member',
     }));
     const d = isoToRoc(item.publish_date).split('.');
+    const navLink = (n, dir) => n
+      ? link('article', n.id, { className: 'ur-artnav-item' }, h('span', null, dir), h('strong', null, n.title))
+      : h('span', { className: 'ur-artnav-item is-off' }, h('span', null, dir), h('strong', null, '沒有了'));
 
-    return h('div', { className: 'paa-page' },
-      Breadcrumb([
-        { label: '首頁', page: 'home' },
-        { label: '最新公告', page: 'news' },
-        { label: item.category },
-      ]),
-      h('div', { className: 'paa-wrap paa-article' },
-        h('article', { className: 'paa-article-main' },
-          h('div', { className: 'paa-article-head' },
-            h('span', { className: 'paa-news-tag', style: { background: item.color } }, item.category),
-            h('h1', { className: 'paa-article-title' }, item.title),
-            h('div', { className: 'paa-article-meta' },
-              h('span', null, '發布日期：民國 ' + d[0] + ' 年 ' + d[1] + ' 月 ' + d[2] + ' 日'))),
-          h('div', { className: 'paa-article-body' }, renderBody(body)),
-          articleFiles(files),
-          h('div', { className: 'paa-article-nav' },
-            prev
-              ? link('article', prev.id, { className: 'paa-artnav' },
-                  h('span', { className: 'paa-artnav-dir' }, '‹ 上一則'),
-                  h('span', { className: 'paa-artnav-title' }, prev.title))
-              : h('button', { className: 'paa-artnav', disabled: true },
-                  h('span', { className: 'paa-artnav-dir' }, '‹ 上一則'),
-                  h('span', { className: 'paa-artnav-title' }, '已是最新一則')),
-            next
-              ? link('article', next.id, { className: 'paa-artnav paa-artnav-next' },
-                  h('span', { className: 'paa-artnav-dir' }, '下一則 ›'),
-                  h('span', { className: 'paa-artnav-title' }, next.title))
-              : h('button', { className: 'paa-artnav paa-artnav-next', disabled: true },
-                  h('span', { className: 'paa-artnav-dir' }, '下一則 ›'),
-                  h('span', { className: 'paa-artnav-title' }, '已是最後一則'))),
-          h('div', { className: 'paa-article-back' },
-            h('button', { className: 'paa-btn-ghost', onClick: () => go('news') }, '← 返回公告列表'))),
-        h('aside', { className: 'paa-article-side' },
-          h('div', { className: 'paa-side-title' }, '近期公告'),
-          h('div', { className: 'paa-side-list' },
-            list.filter((n) => n.id !== item.id).slice(0, 6).map((n) =>
-              link('article', n.id, { className: 'paa-side-row' },
-                h('span', { className: 'paa-side-tag', style: { color: n.color } }, n.category),
-                h('span', { className: 'paa-side-row-title' }, n.title),
-                h('span', { className: 'paa-side-row-date' }, isoToRoc(n.publish_date))))))));
+    return h('div', null,
+      h('div', { className: 'ur-pagehead' },
+        h('div', { className: 'ur-wrap ur-narrow' },
+          Breadcrumb([{ label: '首頁', page: 'home' }, { label: '最新公告', page: 'news' }, { label: item.category }]),
+          h('h1', { className: 'ur-pagehead-title ur-article-title' }, item.title),
+          h('div', { className: 'ur-article-meta' },
+            h('span', { className: 'ur-tag' }, h('i', { style: { background: item.color } }), item.category),
+            h('time', { datetime: String(item.publish_date || '').slice(0, 10) }, '民國 ' + d[0] + ' 年 ' + d[1] + ' 月 ' + d[2] + ' 日')))),
+      h('article', { className: 'ur-wrap ur-narrow ur-page' },
+        renderBody(body),
+        files.length ? h('section', { className: 'ur-attach' }, h('h2', null, '附件'), fileList(files)) : null,
+        h('nav', { className: 'ur-artnav', 'aria-label': '上下則' }, navLink(prev, '上一則'), navLink(next, '下一則')),
+        link('news', null, { className: 'ur-back' }, '← 返回公告列表')));
   }
 
-  // 下載時要顯示的檔名：後台設定的「檔名」通常不含副檔名（如「115年度會員大會會議記錄」），
-  // 直接拿來當下載檔名，Windows 會因為沒有副檔名而不知道用什麼開啟。這裡從實體檔網址補回來。
-  function dlName(name, url) {
-    if (!name) return '';
-    const m = String(url || '').match(/\.([a-z0-9]{1,8})(?:$|[?#])/i);
-    if (!m) return name;
-    return new RegExp('\\.' + m[1] + '$', 'i').test(name) ? name : name + '.' + m[1];
-  }
-
-  // ── file list page (檔案下載) ─────────────────────────────────────────────
-  function fileRow(f, flash) {
-    const ty = (f.type || 'pdf').toUpperCase();
-    const tc = { PDF: '#a53030', DOC: '#1f3a5f', XLS: '#2d6a4f', IMG: '#b8924a' }[ty] || '#7a7d82';
-    const member = f.access === 'member';
-    const inner = [
-      h('span', { className: 'paa-dlfile-ic', style: { background: tc } }, ty),
-      h('span', { className: 'paa-dlfile-name' }, f.name),
-      member ? h('span', { className: 'paa-dlfile-badge paa-badge-member' }, '未開放') : null,
-      h('span', { className: 'paa-dlfile-size' }, f.size),
-      h('span', { className: 'paa-dlfile-act' }, member ? '🔒 未開放' : '下載 ↓'),
-    ];
-    // 公開且有實體檔 → 真實下載
-    if (!member && f.url) {
-      return h('a', { className: 'paa-dlfile', href: f.url, target: '_blank', rel: 'noopener noreferrer', download: dlName(f.name, f.url) }, inner);
-    }
-    return h('button', { className: 'paa-dlfile' + (member ? ' paa-dlfile-member' : ''),
-      onClick: () => flash(member
-        ? '「' + f.name + '」目前未開放下載。'
-        : '「' + f.name + '」尚未上傳檔案。') }, inner);
-  }
-
-  function FileListPage(cfg) {
-    // 分類以 id 識別（cfg.files[].catId），null＝全部；initialCat 接受 id 或舊的分類名稱
-    const cats = uniqCats(cfg.files.map((f) => ({ category_id: f.catId, category: f.cat })));
-    let cat = findCat(cats, cfg.initialCat);
-    const container = h('div', { className: 'paa-page' });
-    const noteDesc = h('div', { className: 'paa-loginbanner-d' });
-    const note = h('div', { className: 'paa-loginbanner' },
-      h('span', { className: 'paa-loginbanner-ic' }, 'ℹ️'),
-      h('div', { className: 'paa-loginbanner-text' }, h('div', { className: 'paa-loginbanner-t' }, '提醒'), noteDesc));
-    note.style.marginTop = '14px';
-    note.style.display = 'none';
-    const flash = (msg) => {
-      noteDesc.textContent = msg;
-      note.style.display = '';
-      note.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
-
-    function rebuild() {
-      note.style.display = 'none';
-      const list = cat ? cfg.files.filter((f) => f.catId === cat.id) : cfg.files;
-      const body = h('div', { className: 'paa-wrap paa-dl-body' },
-        cfg.intro ? h('p', { className: 'paa-dl-intro' }, cfg.intro) : null,
-        h('div', { className: 'paa-news-tabs' },
-          [null, ...cats].map((c) => h('button', {
-            className: 'paa-news-tab' + (cat === c ? ' paa-news-tab-active' : ''),
-            onClick: () => { cat = c; rebuild(); if (cfg.onCat) cfg.onCat(cat, container); },
-          }, c ? c.name : '全部')),
-          h('span', { className: 'paa-news-count' }, '共 ' + list.length + ' 筆')),
-        h('div', { className: 'paa-dlfile-list' },
-          list.map((f) => fileRow(f, flash))),
-        note,
-        cfg.foot ? h('p', { className: 'paa-dl-note' }, cfg.foot) : null);
-
-      const old = container.querySelector('.paa-dl-body');
-      if (old) container.replaceChild(body, old);
-      else container.appendChild(body);
-    }
-
-    container.appendChild(Breadcrumb([{ label: '首頁', page: 'home' }, { label: cfg.crumb }]));
-    container.appendChild(PageBanner(cfg.zh, cfg.en));
-    rebuild();
-    return container;
-  }
-
+  // ── downloads page ───────────────────────────────────────────────────────
   async function Downloads(initialCat) {
     const data = await store.downloads();
     const files = data.items.map((f) => ({
-      name: f.name, cat: f.category, catId: f.category_id, access: f.access, size: fmtBytes(f.size_bytes), type: f.type,
+      name: f.name, catId: f.category_id, size: fmtBytes(f.size_bytes), type: f.type,
       url: f.file_path ? '/files/' + f.file_path : null,
+      locked: f.access === 'member',
     }));
-    return FileListPage({
-      zh: '檔案下載', en: 'DOWNLOADS', crumb: '檔案下載',
-      intro: '各類申請表單與文件，歡迎下載運用。',
-      files, initialCat,
-      onCat: (c, view) => setUrl('downloads', c ? c.id : null, view),
-    });
+    const cats = uniqCats(data.items);
+    let cat = findCat(cats, initialCat);
+    const container = h('div', null, PageHead('檔案下載'));
+    const host = h('div', { className: 'ur-wrap ur-page' });
+    container.appendChild(host);
+
+    function rebuild() {
+      const list = cat ? files.filter((f) => f.catId === cat.id) : files;
+      host.replaceChildren(...[
+        cats.length > 1 ? h('div', { className: 'ur-toolbar' }, Chips(cats, cat, (c) => { cat = c; rebuild(); setUrl('downloads', cat ? cat.id : null, container); })) : null,
+        h('p', { className: 'ur-resultnote' }, '共 ' + list.length + ' 筆'),
+        list.length ? fileList(list) : h('p', { className: 'ur-empty' }, '目前沒有檔案。'),
+      ].filter(Boolean));
+    }
+    rebuild();
+    return container;
   }
 
   // ── contact page ─────────────────────────────────────────────────────────
   async function Contact() {
     const res = await store.contact();
     const c = res.contact || {};
-    const rows = [
-      ['會　址', c.address], ['電　話', c.tel], ['傳　真', c.fax], ['信　箱', c.email],
-    ];
-    return h('div', { className: 'paa-page' },
-      Breadcrumb([{ label: '首頁', page: 'home' }, { label: '聯絡我們' }]),
-      PageBanner('聯絡我們', 'CONTACT US'),
-      h('div', { className: 'paa-wrap paa-ct' },
-        h('div', { className: 'paa-ct-top' },
-          h('div', { className: 'paa-ct-info' },
-            Heading('聯絡資訊', 'CONTACT INFO'),
-            h('div', { className: 'paa-contact-rows' },
-              rows.map(([k, v]) => h('div', { className: 'paa-contact-row' },
-                h('span', { className: 'paa-contact-k' }, k),
-                h('span', { className: 'paa-contact-v' }, v)))),
-            h('div', { className: 'paa-ct-hint' }, '本會將儘速回覆您的來信，謝謝。')),
-          h('div', { className: 'paa-ct-map' },
-            h('div', { className: 'paa-contact-map' },
-              h('iframe', { className: 'paa-contact-mapframe', title: '本會位置地圖（OpenStreetMap）', loading: 'lazy',
-                src: 'https://www.openstreetmap.org/export/embed.html?bbox=119.564612%2C23.563972%2C119.571612%2C23.568972&layer=mapnik&marker=23.566472%2C119.568112' }),
-              h('a', { className: 'paa-contact-maplink', target: '_blank', rel: 'noopener',
-                href: 'https://www.openstreetmap.org/?mlat=23.566472&mlon=119.568112#map=18/23.566472/119.568112' }, '在 OpenStreetMap 開啟 ↗'))))));
+    const rows = [['地址', c.address], ['電話', c.tel], ['傳真', c.fax], ['電子郵件', c.email]].filter(([, v]) => v);
+    return h('div', null,
+      PageHead('聯絡我們'),
+      h('div', { className: 'ur-wrap ur-narrow ur-page' },
+        rows.length
+          ? h('dl', { className: 'ur-dl' }, rows.flatMap(([k, v]) => [
+              h('dt', null, k),
+              h('dd', null, k === '電子郵件' ? h('a', { href: 'mailto:' + v }, v) : v),
+            ]))
+          : h('p', { className: 'ur-empty' }, '聯絡資訊尚未設定。')));
   }
 
   // ── document page (privacy / terms) ───────────────────────────────────────
   async function DocPage(key) {
-    const res = await store.legal(key);
-    const doc = res.item;
-    const fileUrl = doc.file_key ? '/files/' + doc.file_key : null;
-    return h('div', { className: 'paa-page' },
-      Breadcrumb([{ label: '首頁', page: 'home' }, { label: doc.title }]),
-      PageBanner(doc.title, doc.title_en),
-      h('div', { className: 'paa-wrap paa-doc' },
-        doc.updated_date ? h('div', { className: 'paa-doc-meta' }, '最後更新：' + doc.updated_date) : null,
-        h('div', { className: 'paa-article-body' }, renderBody(doc.blocks)),
-        // PDF 原始檔未上傳就不出現這顆按鈕：留一個點了會 404 的連結比沒有更糟。
-        fileUrl ? h('div', { className: 'paa-doc-file' },
-          h('a', { className: 'paa-btn-ghost paa-charter-btn', href: fileUrl, target: '_blank', rel: 'noopener noreferrer',
-            download: dlName(doc.title, fileUrl) }, '📄 下載 PDF 原始檔')) : null,
-        h('div', { className: 'paa-doc-back' },
-          h('button', { className: 'paa-btn-ghost', onClick: () => go('sitemap') }, '網站導覽'),
-          h('button', { className: 'paa-btn-solid', onClick: () => go('home') }, '返回首頁'))));
+    const doc = (await store.legal(key)).item;
+    return h('div', null,
+      PageHead(doc.title),
+      h('div', { className: 'ur-wrap ur-narrow ur-page' },
+        doc.updated_date ? h('p', { className: 'ur-doc-meta' }, '最後更新：' + doc.updated_date) : null,
+        renderBody(doc.blocks)));
   }
 
   // ── site map page ────────────────────────────────────────────────────────
   async function Sitemap() {
-    // 動態：公告分類、檔案分類皆從 API 取得，避免清單過時
-    const [home, downloads] = await Promise.all([store.home(), store.downloads()]);
-    const newsCats = (home.categories || []).filter((c) => c.name);
-    const dlCats = uniqCats(downloads.items);
+    // 公告分類、檔案分類皆從 API 取得，避免清單過時
+    const [cats, downloads] = await Promise.all([store.categories(), store.downloads()]);
     const sections = [
       { label: '首頁', page: 'home' },
-      { label: '最新公告', page: 'news', children: newsCats.map((n) => ({ label: n.name, page: 'news', arg: n.id })) },
-      { label: '檔案下載', page: 'downloads', children: dlCats.map((c) => ({ label: c.name, page: 'downloads', arg: c.id })) },
+      { label: '最新公告', page: 'news', children: cats.map((n) => ({ label: n.name, page: 'news', arg: n.id })) },
+      { label: '檔案下載', page: 'downloads', children: uniqCats(downloads.items).map((c) => ({ label: c.name, page: 'downloads', arg: c.id })) },
       { label: '聯絡我們', page: 'contact' },
-      { label: '政策與條款', children: [
-        { label: '隱私權政策', page: 'privacy' }, { label: '網站使用條款', page: 'terms' },
-      ] },
+      { label: '隱私權政策', page: 'privacy' },
+      { label: '網站使用條款', page: 'terms' },
     ];
-    return h('div', { className: 'paa-page' },
-      Breadcrumb([{ label: '首頁', page: 'home' }, { label: '網站導覽' }]),
-      PageBanner('網站導覽', 'SITE MAP'),
-      h('div', { className: 'paa-wrap paa-sitemap' },
-        h('p', { className: 'paa-sm-intro' }, '本頁彙整本網站各單元連結，便於您快速前往所需頁面。'),
-        h('div', { className: 'paa-sm-grid' },
-          sections.map((sec) => h('div', { className: 'paa-sm-col' },
-            sec.page
-              ? link(sec.page, sec.arg || null, { className: 'paa-sm-top' }, sec.label)
-              : h('div', { className: 'paa-sm-top paa-sm-top-plain' }, sec.label),
-            sec.children && sec.children.length ? h('ul', { className: 'paa-sm-list' },
-              sec.children.map((c) => h('li', null,
-                link(c.page, c.arg || null, { className: 'paa-sm-link' }, c.label)))) : null)))));
+    return h('div', null,
+      PageHead('網站導覽'),
+      h('div', { className: 'ur-wrap ur-narrow ur-page' },
+        h('ul', { className: 'ur-sitemap' },
+          sections.map((sec) => h('li', null,
+            link(sec.page, null, null, sec.label),
+            sec.children && sec.children.length ? h('ul', null,
+              sec.children.map((c) => h('li', null, link(c.page, c.arg, null, c.label)))) : null)))));
   }
 
-  // ── stub page ────────────────────────────────────────────────────────────
-  function Stub(label) {
-    return h('div', { className: 'paa-page' },
-      Breadcrumb([
-        { label: '首頁', page: 'home' },
-        { label: label || '頁面' },
-      ]),
-      h('div', { className: 'paa-wrap paa-stub' },
-        h('img', { className: 'paa-stub-mark', src: 'assets/logo.png', alt: '社團法人澎湖縣建築師公會 會徽', width: '86', height: '86', loading: 'lazy' }),
-        h('h1', { className: 'paa-stub-title' }, label),
-        h('p', { className: 'paa-stub-text' }, '本頁面內容建置中'),
-        h('div', { className: 'paa-stub-actions' },
-          h('button', { className: 'paa-btn-solid', onClick: () => go('home') }, '返回首頁'),
-          h('button', { className: 'paa-btn-ghost', onClick: () => go('news') }, '前往最新公告'))));
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // ── stub / loading / error ───────────────────────────────────────────────
+  function Stub() {
+    return h('div', { className: 'ur-wrap ur-narrow ur-state' },
+      h('h1', null, '找不到這個頁面'),
+      h('p', null, '頁面可能已移除，或仍在建置中。'),
+      link('home', null, { className: 'ur-btn ur-btn-primary' }, '回到首頁'));
   }
 
   function Loading() {
-    return h('div', { className: 'paa-loading' }, h('div', { className: 'paa-spin' }), h('span', null, '載入中…'));
+    return h('div', { className: 'ur-state', role: 'status' }, h('div', { className: 'ur-spin' }), h('p', null, '載入中…'));
   }
   function ErrorBox() {
-    return h('div', { className: 'paa-page' },
-      h('div', { className: 'paa-wrap paa-errbox' },
-        h('div', { className: 'paa-errbox-ic' }, '⚠'),
-        h('h2', null, '載入失敗'),
-        h('p', null, '無法取得資料，請稍後再試。'),
-        h('button', { className: 'paa-btn-solid', onClick: () => render() }, '重新載入')));
+    return h('div', { className: 'ur-wrap ur-narrow ur-state' },
+      h('h1', null, '載入失敗'),
+      h('p', null, '無法取得資料，請稍後再試。'),
+      h('button', { type: 'button', className: 'ur-btn ur-btn-primary', onClick: () => render() }, '重新載入'));
   }
 
   // ── router (async) ───────────────────────────────────────────────────────
@@ -828,7 +610,7 @@
       else if (p === 'privacy') view = await DocPage('privacy');
       else if (p === 'terms') view = await DocPage('terms');
       else if (p === 'article') view = await Article(route.arg);
-      else view = Stub(route.arg);
+      else view = Stub();
     } catch (e) {
       view = ErrorBox();
     }

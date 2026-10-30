@@ -65,4 +65,7 @@ const DEMO_LEGAL = {
   terms: { blocks: [{ p: '（示範內容）本網站使用條款，上線前請依實際營運單位改寫。' }] },
 };
 
-Object.assign(window, { DEMO_NEWS, DEMO_DOWNLOADS, DEMO_FRIENDS, DEMO_HERO, DEMO_LEGAL });
+// 聯絡資訊（虛構）
+const DEMO_CONTACT = { address: '示範市示範區示範路 1 號', tel: '(02) 0000-0000', fax: '', email: 'service@example.com' };
+
+Object.assign(window, { DEMO_NEWS, DEMO_DOWNLOADS, DEMO_FRIENDS, DEMO_HERO, DEMO_LEGAL, DEMO_CONTACT });

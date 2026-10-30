@@ -16,3 +16,4 @@ INSERT INTO friend_links (name,url,is_active,sort_order) VALUES ('示範市政�
 INSERT INTO hero_slides (background_image,eyebrow,title,description,buttons,is_active,sort_order) VALUES (NULL,'URBAN REGENERATION','老舊建物<br>機能復新計畫','安全韌性、節能減碳、在地修繕服務。','[{"label":"最新消息 →","target_page":"news","target_arg":null,"is_primary":true},{"label":"申請書下載","target_page":"downloads","target_arg":null,"is_primary":false}]',1,0);
 UPDATE legal_pages SET blocks='[{"p":"（示範內容）本網站隱私權政策，上線前請依實際營運單位改寫。"}]' WHERE "key"='privacy';
 UPDATE legal_pages SET blocks='[{"p":"（示範內容）本網站使用條款，上線前請依實際營運單位改寫。"}]' WHERE "key"='terms';
+UPDATE settings SET "value"='{"address":"示範市示範區示範路 1 號","tel":"(02) 0000-0000","fax":"","email":"service@example.com"}' WHERE "key"='contact';
