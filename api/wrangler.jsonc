@@ -3,13 +3,14 @@
   // 兩套環境：dev / prod，各自獨立的 Worker 名稱、D1、KV、R2。
   // 部署一律帶環境：`wrangler deploy --env dev` 或 `--env prod`。
   //
-  // 尚未建立雲端資源：下方 database_id / KV id 皆為佔位值，本機 `wrangler dev` 不受影響
-  // （本機 D1／KV／R2 由 miniflare 模擬）。正式部署前需：
-  //   1. 決定 Cloudflare 帳號並補上 account_id
-  //   2. `wrangler d1 create`、`wrangler kv namespace create`、`wrangler r2 bucket create` 後填回實際 id
-  //   3. 決定網域後補上 routes
+  // 帳號：PAA 澎湖縣建築師公會。dev 資源已建立（2026-11-06）。
+  // prod 尚未建立：下方 prod 的 database_id / KV id 仍為佔位值。上線前需：
+  //   1. `wrangler d1 create paa-ur-db`、`wrangler kv namespace create paa-ur-kv-prod`、`wrangler r2 bucket create paa-ur-files` 後填回實際 id
+  //   2. 決定網域後補上 routes
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "paa-ur",
+  // PAA 澎湖縣建築師公會帳號
+  "account_id": "6125a621bf5bbd92935a668b987b8c66",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-01",
   "observability": {
@@ -43,12 +44,12 @@
         {
           "binding": "DB",
           "database_name": "paa-ur-db-dev",
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "11dc589a-8d24-4f2b-8ca8-0b27f163ae27",
           "migrations_dir": "migrations"
         }
       ],
       "kv_namespaces": [
-        { "binding": "KV", "id": "00000000000000000000000000000000" }
+        { "binding": "KV", "id": "bea72eaec51d4835a7f5dfe692424d6b" }  // paa-ur-kv-dev
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "paa-ur-files-dev" }
