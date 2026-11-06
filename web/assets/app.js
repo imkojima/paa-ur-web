@@ -90,8 +90,8 @@
   ];
 
   // ── 站名與每頁標題／描述 ─────────────────────────────────────────────────
-  // 站名為品牌定案前的暫用名稱；改名時 web/index.html 與 api/src/meta.ts 要一起改。
-  const SITE_NAME = '老舊建物機能復新專區';
+  // 站名；改名時 web/index.html 與 api/src/meta.ts 要一起改。
+  const SITE_NAME = '澎湖縣老宅延壽機能復新計畫';
   const DEFAULT_DESC = SITE_NAME + ' — 最新公告、申請文件下載與聯絡資訊。';
   const PAGE_TITLES = {
     home: '', news: '最新公告', downloads: '檔案下載', contact: '聯絡我們',
@@ -391,11 +391,16 @@
     return h('div', null,
       Hero(home.hero.map(heroShape)),
       h('div', { className: 'ur-wrap ur-home' },
-        h('section', { className: 'ur-home-news' },
-          SectionHead('最新公告', { page: 'news', label: '所有公告' }),
-          latest.items.length
-            ? h('div', { className: 'ur-news-list' }, latest.items.map(newsRow))
-            : h('p', { className: 'ur-empty' }, '目前沒有公告。')),
+        h('div', { className: 'ur-home-main' },
+          h('section', { className: 'ur-home-news' },
+            SectionHead('最新公告', { page: 'news', label: '所有公告' }),
+            latest.items.length
+              ? h('div', { className: 'ur-news-list' }, latest.items.map(newsRow))
+              : h('p', { className: 'ur-empty' }, '目前沒有公告。')),
+          // 計畫說明（後台「計畫說明」模組維護；沒設定就不顯示）
+          home.intro ? h('section', { className: 'ur-home-intro' },
+            SectionHead(home.intro.title || '計畫說明'),
+            h('div', { className: 'ur-prose ur-intro-body', html: sanitizeHtml(home.intro.html) })) : null),
         h('aside', { className: 'ur-home-side' },
           dlCats.length ? h('section', null,
             SectionHead('檔案下載', { page: 'downloads', label: '全部' }),

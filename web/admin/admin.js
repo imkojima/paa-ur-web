@@ -136,7 +136,7 @@
     });
   }
 
-  const MODULES = [['announcements', '公告'], ['attachments', '附件'], ['downloads', '檔案'], ['legal', '法律頁面'], ['friends', '相關連結'], ['hero', '輪播'], ['settings', '設定'], ['admins', '管理員'], ['audit', '操作紀錄']];
+  const MODULES = [['announcements', '公告'], ['attachments', '附件'], ['downloads', '檔案'], ['legal', '法律頁面'], ['friends', '相關連結'], ['hero', '輪播'], ['intro', '計畫說明'], ['settings', '設定'], ['admins', '管理員'], ['audit', '操作紀錄']];
   // 這些模組僅最高管理員可見/可進入
   const SUPER_ONLY = new Set(['admins', 'audit']);
   const visibleModules = () => MODULES.filter(([k]) => !SUPER_ONLY.has(k) || (me && me.role === 'superadmin'));
@@ -355,7 +355,7 @@
     app.appendChild(h('div', { className: 'pa-login' },
       h('form', { className: 'pa-login-card', onSubmit: submit },
         h('h1', null, '後台管理 ', envBadge()),
-        h('p', null, '老舊建物機能復新專區'),
+        h('p', null, '澎湖縣老宅延壽機能復新計畫'),
         h('label', { className: 'pa-field' }, h('span', null, '帳號'), u),
         h('label', { className: 'pa-field' }, h('span', null, '密碼'), p),
         tsBox,
@@ -416,6 +416,7 @@
     else if (k === 'legal') chrome('legal', legalResource(arg));
     else if (k === 'downloads') chrome('downloads', downloadsResource(arg));
     else if (k === 'settings') chrome('settings', settingsResource());
+    else if (k === 'intro') chrome('intro', introResource());
     else if (k === 'admins') chrome('admins', adminsResource());
     else if (k === 'audit') chrome('audit', auditResource(arg));
     else if (k === 'attachments') chrome('attachments', attachmentsResource());
@@ -707,6 +708,48 @@
   // 會籍狀態會直接決定誰被建立紀錄，是最容易誤操作的一項，故：
   // 一、預設值依業務性質不同（會費是義務、福利金是權利）；
   // 二、把每種狀態的人數即時標在勾選框上，執行前就看得到影響範圍。
+  // 首頁「計畫說明」區塊：settings 的 home_intro（{ title, html }）。內文留空＝前台不顯示該區塊。
+  function introResource() {
+    const host = h('div');
+    (async () => {
+      if (window.tinymce) tinymce.remove();
+      host.appendChild(h('div', { className: 'pa-loading' }, '載入中…'));
+      const { settings } = await api('/settings');
+      const cur = settings.home_intro || {};
+      const title = h('input', { type: 'text', value: cur.title || '', placeholder: '例：老宅延壽機能復新計畫' });
+      const body = h('textarea', { id: 'intro-body', className: 'pa-richtext' });
+      const msg = h('div', { className: 'pa-err' }); msg.style.display = 'none';
+      const save = async () => {
+        const ed = window.tinymce && tinymce.get('intro-body');
+        const html = ed ? ed.getContent() : (body.value || '');
+        try {
+          await api('/settings/home_intro', { method: 'PUT', body: { value: {
+            title: title.value.trim(),
+            html: (html && html !== '<p><br></p>') ? html : '',
+          } } });
+          msg.textContent = '已儲存 ✓（前台首頁約 1 分鐘內更新）'; msg.style.color = 'var(--green)'; msg.style.display = '';
+        } catch (ex) { msg.textContent = ex.message; msg.style.color = 'var(--red)'; msg.style.display = ''; }
+      };
+      host.innerHTML = '';
+      host.appendChild(h('div', null,
+        h('div', { className: 'pa-h' }, h('h2', null, '計畫說明'),
+          h('button', { className: 'btn-accent', onClick: save }, '儲存')),
+        h('p', { className: 'pa-hint' }, '顯示於前台首頁「最新公告」下方。內文清空後儲存，前台就不顯示這個區塊。'),
+        h('div', { className: 'pa-form' },
+          h('label', { className: 'pa-field' }, h('span', null, '區塊標題'), title),
+          h('label', { className: 'pa-field' }, h('span', null, '內文', infoTip('「標題」用於「一、二、三」大段，「小標」用於「（一）（二）」小段。')), body),
+          msg,
+          h('div', { className: 'pa-form-foot' }, h('button', { className: 'btn-accent', onClick: save }, '儲存')))));
+      try { await loadTinyMce(); } catch (e) { /* 載入失敗 → 下方退回 textarea */ }
+      if (!initTinyMce(body, cur.html || '')) {
+        body.setAttribute('rows', '16');
+        body.style.cssText = 'width:100%;font-family:inherit';
+        body.value = cur.html || '';
+      }
+    })();
+    return host;
+  }
+
   // 系統設定：聯絡資訊
   function settingsResource() {
     const host = h('div');

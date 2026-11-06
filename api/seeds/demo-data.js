@@ -44,7 +44,8 @@ const DEMO_DOWNLOADS = [
 
 const DEMO_FRIENDS = [
   { name: '內政部國土管理署', url: 'https://www.nlma.gov.tw/' },
-  { name: '示範市政府', url: null },
+  { name: '澎湖縣政府', url: 'https://www.penghu.gov.tw/' },
+  { name: '社團法人澎湖縣建築師公會', url: 'https://www.paa.org.tw/' },
 ];
 
 const DEMO_HERO = [

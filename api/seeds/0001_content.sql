@@ -12,7 +12,8 @@ INSERT INTO documents (name,description,publish_date,category_id,access,file_pat
 INSERT INTO documents (name,description,publish_date,category_id,access,file_path,size_bytes,type,is_active,sort_order) VALUES ('透天住宅-補助申請書',NULL,NULL,(SELECT id FROM document_categories WHERE name='透天住宅-補助申請表單'),'public',NULL,307200,'pdf',1,2);
 INSERT INTO documents (name,description,publish_date,category_id,access,file_path,size_bytes,type,is_active,sort_order) VALUES ('申請流程圖',NULL,NULL,(SELECT id FROM document_categories WHERE name='其他申請文件'),'public',NULL,184320,'pdf',1,3);
 INSERT INTO friend_links (name,url,is_active,sort_order) VALUES ('內政部國土管理署','https://www.nlma.gov.tw/',1,0);
-INSERT INTO friend_links (name,url,is_active,sort_order) VALUES ('示範市政府',NULL,1,1);
+INSERT INTO friend_links (name,url,is_active,sort_order) VALUES ('澎湖縣政府','https://www.penghu.gov.tw/',1,1);
+INSERT INTO friend_links (name,url,is_active,sort_order) VALUES ('社團法人澎湖縣建築師公會','https://www.paa.org.tw/',1,2);
 INSERT INTO hero_slides (background_image,eyebrow,title,description,buttons,is_active,sort_order) VALUES (NULL,'URBAN REGENERATION','老舊建物<br>機能復新計畫','安全韌性、節能減碳、在地修繕服務。','[{"label":"最新消息 →","target_page":"news","target_arg":null,"is_primary":true},{"label":"申請書下載","target_page":"downloads","target_arg":null,"is_primary":false}]',1,0);
 UPDATE legal_pages SET blocks='[{"p":"（示範內容）本網站隱私權政策，上線前請依實際營運單位改寫。"}]' WHERE "key"='privacy';
 UPDATE legal_pages SET blocks='[{"p":"（示範內容）本網站使用條款，上線前請依實際營運單位改寫。"}]' WHERE "key"='terms';

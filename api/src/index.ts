@@ -301,8 +301,12 @@ app.get('/api/home', async (c) => {
     ).bind(cat.id).all();
     news[cat.name] = results;
   }
+  // 首頁「計畫說明」（後台「計畫說明」模組維護）；未設定或內文空白則前台不顯示該區塊
+  const introRow = await c.env.DB.prepare("select \"value\" as v from settings where \"key\"='home_intro'").first<{ v: string }>();
+  const intro = introRow ? pj(introRow.v) : null;
   return c.json({
     hero, sections,
+    intro: intro && typeof intro === 'object' && (intro as { html?: string }).html ? intro : null,
     categories: categories.map((x) => ({ id: x.id, name: x.name, color: x.color })),
     news,
   });
