@@ -410,17 +410,28 @@
 
   // ── home page ────────────────────────────────────────────────────────────
   // 首頁快速入口：民眾最常找的五件事（縣府函文要求的項目）
+  // 圖示取自 Lucide（ISC 授權）：coins、list-checks、file-down、circle-help、messages-square。
+  const QUICK_ICONS = {
+    coins: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    steps: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+    download: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
+    help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    chat: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+  };
   const QUICK = [
-    { page: 'subsidy', icon: '¥', label: '補助辦法', desc: '資格、項目與額度' },
-    { page: 'process', icon: '→', label: '申請流程', desc: '五個步驟看懂' },
-    { page: 'downloads', icon: '↓', label: '申請表單下載', desc: '表單、簡報、摺頁' },
-    { page: 'faq', icon: '?', label: '常見問答', desc: '先查常見問題' },
-    { page: 'consult', icon: '✉', label: '線上諮詢', desc: '值班人員線上回覆' },
+    { page: 'subsidy', icon: 'coins', tone: 'orange', label: '補助辦法', desc: '資格、項目與額度' },
+    { page: 'process', icon: 'steps', tone: 'blue', label: '申請流程', desc: '五個步驟看懂' },
+    { page: 'downloads', icon: 'download', tone: 'green', label: '申請表單下載', desc: '表單、簡報、摺頁' },
+    { page: 'faq', icon: 'help', tone: 'purple', label: '常見問答', desc: '先查常見問題' },
+    { page: 'consult', icon: 'chat', tone: 'teal', label: '線上諮詢', desc: '值班人員線上回覆' },
   ];
+  // 樣式：line＝線條＋淡色圓底｜solid＝實心圓底白圖示｜stack＝圖示在上、置中大按鈕｜color＝依入口分色
+  const QUICK_STYLE = 'line';
+  const quickSvg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + QUICK_ICONS[k] + '</svg>';
   function QuickLinks() {
-    return h('nav', { className: 'ur-wrap ur-quick', 'aria-label': '快速入口' },
-      QUICK.map((q) => link(q.page, null, { className: 'ur-quick-item' },
-        h('span', { className: 'ur-quick-icon', 'aria-hidden': 'true' }, q.icon),
+    return h('nav', { className: 'ur-wrap ur-quick ur-quick--' + QUICK_STYLE, 'aria-label': '快速入口' },
+      QUICK.map((q) => link(q.page, null, { className: 'ur-quick-item', 'data-tone': q.tone },
+        h('span', { className: 'ur-quick-icon', html: quickSvg(q.icon) }),
         h('span', { className: 'ur-quick-text' }, h('strong', null, q.label), h('small', null, q.desc)))));
   }
 
