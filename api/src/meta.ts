@@ -2,7 +2,7 @@
 // 供爬蟲與社群預覽取得「每則公告」正確的標題、摘要與封面。
 
 const SITE = '澎湖縣老宅延壽機能復新計畫'; // 站名；與 web/index.html、web/assets/app.js 的 SITE_NAME 同步
-const SITE_DESC = '澎湖縣老宅延壽機能復新計畫 — 最新公告、申請文件下載與聯絡資訊。';
+const SITE_DESC = '澎湖縣老宅延壽機能復新計畫 — 補助辦法、申請流程、常見問答、線上諮詢與申請表單下載。';
 
 type Env = { DB: D1Database };
 export type PageMeta = {
@@ -11,9 +11,14 @@ export type PageMeta = {
 };
 
 const STATIC: Record<string, { title: string; desc: string; noindex?: boolean }> = {
-  news: { title: '最新公告', desc: '計畫相關公告、新聞稿與活動訊息。' },
-  downloads: { title: '檔案下載', desc: '申請表單、文件與相關資源下載。' },
-  contact: { title: '聯絡我們', desc: '地址、電話與電子郵件等聯絡資訊。' },
+  plan: { title: '計畫說明', desc: '老宅延壽機能復新計畫的緣起、推動主軸、期程與執行單位。' },
+  subsidy: { title: '補助辦法', desc: '申請資格、補助項目與額度、補助比例、加碼條件及優先審查項目。' },
+  process: { title: '申請流程', desc: '從提出申請、縣府審查、核定施工到成果備查與請款的步驟說明。' },
+  news: { title: '最新公告', desc: '計畫相關公告、活動訊息與宣導資訊。' },
+  downloads: { title: '資料下載', desc: '申請表單、說明會簡報、宣傳摺頁與相關文件下載。' },
+  faq: { title: '常見問答', desc: '申請資格、補助項目、申請程序、審查作業等常見問題。' },
+  consult: { title: '線上諮詢', desc: 'LINE 即時諮詢，由網路值班人員回覆。' },
+  contact: { title: '聯絡我們', desc: '執行單位、主辦單位與指導單位的聯絡窗口。' },
   privacy: { title: '隱私權政策', desc: '本網站隱私權政策說明。' },
   terms: { title: '網站使用條款', desc: '本網站使用條款說明。' },
   sitemap: { title: '網站地圖', desc: '本網站頁面索引。' },

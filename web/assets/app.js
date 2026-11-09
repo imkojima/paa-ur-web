@@ -70,6 +70,9 @@
     hero: () => apiCached('/api/hero'),
     legal: (key) => apiCached('/api/legal/' + key),
     contact: () => apiCached('/api/contact'),
+    page: (slug) => apiCached('/api/pages/' + slug),
+    faqs: () => apiCached('/api/faqs'),
+    config: () => apiCached('/api/config'),
   };
 
   // Per-route teardown registry (carousel interval).
@@ -82,19 +85,30 @@
   let route = { page: 'home', arg: null };
 
   // 主選單
+  // 依民眾申請步驟排列（縣府退件修正版規劃）；有 children 的是下拉選單，父項點了進第一個子頁。
   const NAV = [
     { id: 'home', label: '首頁' },
+    { id: 'plan', label: '計畫介紹', children: [
+      { id: 'plan', label: '計畫說明' },
+      { id: 'subsidy', label: '補助辦法' },
+      { id: 'process', label: '申請流程' },
+    ] },
     { id: 'news', label: '最新公告' },
-    { id: 'downloads', label: '檔案下載' },
+    { id: 'downloads', label: '資料下載' },
+    { id: 'faq', label: '常見問答' },
+    { id: 'consult', label: '線上諮詢' },
     { id: 'contact', label: '聯絡我們' },
   ];
+  // 頁面管理（後台「頁面」模組）維護內容的前台頁：路由 id 即 pages.slug
+  const INFO_PAGES = ['plan', 'subsidy', 'process'];
 
   // ── 站名與每頁標題／描述 ─────────────────────────────────────────────────
   // 站名；改名時 web/index.html 與 api/src/meta.ts 要一起改。
   const SITE_NAME = '澎湖縣老宅延壽機能復新計畫';
-  const DEFAULT_DESC = SITE_NAME + ' — 最新公告、申請文件下載與聯絡資訊。';
+  const DEFAULT_DESC = SITE_NAME + ' — 補助辦法、申請流程、常見問答、線上諮詢與申請表單下載。';
   const PAGE_TITLES = {
-    home: '', news: '最新公告', downloads: '檔案下載', contact: '聯絡我們',
+    home: '', news: '最新公告', downloads: '資料下載', contact: '聯絡我們',
+    plan: '計畫說明', subsidy: '補助辦法', process: '申請流程', faq: '常見問答', consult: '線上諮詢',
     privacy: '隱私權政策', terms: '網站使用條款', sitemap: '網站地圖', article: '最新公告',
   };
   function applyMeta(r, view) {
@@ -184,10 +198,23 @@
         link('home', null, { className: 'ur-brand' }, SITE_NAME + testTag()),
         toggle,
         h('nav', { className: 'ur-nav', 'aria-label': '主選單' },
-          NAV.map((n) => link(n.id, null, {
-            className: 'ur-nav-item' + (activeId === n.id ? ' is-active' : ''),
-            'aria-current': activeId === n.id ? 'page' : null,
-          }, n.label)))));
+          NAV.map((n) => {
+            if (!n.children) {
+              return link(n.id, null, {
+                className: 'ur-nav-item' + (activeId === n.id ? ' is-active' : ''),
+                'aria-current': activeId === n.id ? 'page' : null,
+              }, n.label);
+            }
+            // 下拉選單：桌機滑過／鍵盤 focus 展開（CSS :hover / :focus-within），手機選單直接攤開子項
+            const inGroup = n.children.some((ch) => ch.id === activeId);
+            return h('div', { className: 'ur-nav-group' + (inGroup ? ' is-active' : '') },
+              link(n.id, null, { className: 'ur-nav-item ur-nav-parent' + (inGroup ? ' is-active' : ''), 'aria-haspopup': 'true' }, n.label),
+              h('div', { className: 'ur-subnav' },
+                n.children.map((ch) => link(ch.id, null, {
+                  className: 'ur-subnav-item' + (activeId === ch.id ? ' is-active' : ''),
+                  'aria-current': activeId === ch.id ? 'page' : null,
+                }, ch.label))));
+          }))));
     return header;
   }
 
@@ -206,6 +233,7 @@
           h('div', { className: 'ur-footer-name' }, SITE_NAME),
           info),
         h('nav', { className: 'ur-footer-links', 'aria-label': '頁尾連結' },
+          link('consult', null, null, '線上諮詢'),
           link('privacy', null, null, '隱私權政策'),
           link('terms', null, null, '網站使用條款'),
           link('sitemap', null, null, '網站導覽'))),
@@ -381,6 +409,21 @@
   });
 
   // ── home page ────────────────────────────────────────────────────────────
+  // 首頁快速入口：民眾最常找的五件事（縣府函文要求的項目）
+  const QUICK = [
+    { page: 'subsidy', icon: '¥', label: '補助辦法', desc: '資格、項目與額度' },
+    { page: 'process', icon: '→', label: '申請流程', desc: '五個步驟看懂' },
+    { page: 'downloads', icon: '↓', label: '申請表單下載', desc: '表單、簡報、摺頁' },
+    { page: 'faq', icon: '?', label: '常見問答', desc: '先查常見問題' },
+    { page: 'consult', icon: '✉', label: '線上諮詢', desc: '值班人員線上回覆' },
+  ];
+  function QuickLinks() {
+    return h('nav', { className: 'ur-wrap ur-quick', 'aria-label': '快速入口' },
+      QUICK.map((q) => link(q.page, null, { className: 'ur-quick-item' },
+        h('span', { className: 'ur-quick-icon', 'aria-hidden': 'true' }, q.icon),
+        h('span', { className: 'ur-quick-text' }, h('strong', null, q.label), h('small', null, q.desc)))));
+  }
+
   async function Home() {
     const [home, latest, downloads, friends] = await Promise.all([
       store.home(), store.news({ page: 1, perPage: 6 }), store.downloads(), store.friends(),
@@ -390,6 +433,7 @@
 
     return h('div', null,
       Hero(home.hero.map(heroShape)),
+      QuickLinks(),
       h('div', { className: 'ur-wrap ur-home' },
         h('div', { className: 'ur-home-main' },
           h('section', { className: 'ur-home-news' },
@@ -403,7 +447,7 @@
             h('div', { className: 'ur-prose ur-intro-body', html: sanitizeHtml(home.intro.html) })) : null),
         h('aside', { className: 'ur-home-side' },
           dlCats.length ? h('section', null,
-            SectionHead('檔案下載', { page: 'downloads', label: '全部' }),
+            SectionHead('資料下載', { page: 'downloads', label: '全部' }),
             h('ul', { className: 'ur-linklist' },
               dlCats.map((ct) => h('li', null,
                 link('downloads', ct.id, null,
@@ -508,7 +552,15 @@
     }));
     const cats = uniqCats(data.items);
     let cat = findCat(cats, initialCat);
-    const container = h('div', null, PageHead('檔案下載'));
+    const container = h('div', null, PageHead('資料下載'));
+    // 圖片檔（摺頁、海報）在網頁上直接看圖，點圖開原尺寸；下方檔案列表仍可下載
+    const gallery = (list) => {
+      const imgs = list.filter((f) => f.type === 'img' && f.url && !f.locked);
+      if (!imgs.length) return null;
+      return h('div', { className: 'ur-gallery' }, imgs.map((f) => h('a', { href: f.url, target: '_blank', rel: 'noopener noreferrer', className: 'ur-gallery-item' },
+        h('img', { src: f.url, alt: f.name, loading: 'lazy', decoding: 'async' }),
+        h('span', null, f.name))));
+    };
     const host = h('div', { className: 'ur-wrap ur-page' });
     container.appendChild(host);
 
@@ -517,6 +569,7 @@
       host.replaceChildren(...[
         cats.length > 1 ? h('div', { className: 'ur-toolbar' }, Chips(cats, cat, (c) => { cat = c; rebuild(); setUrl('downloads', cat ? cat.id : null, container); })) : null,
         h('p', { className: 'ur-resultnote' }, '共 ' + list.length + ' 筆'),
+        gallery(list),
         list.length ? fileList(list) : h('p', { className: 'ur-empty' }, '目前沒有檔案。'),
       ].filter(Boolean));
     }
@@ -525,19 +578,208 @@
   }
 
   // ── contact page ─────────────────────────────────────────────────────────
+  // 聯絡窗口（執行／主辦／指導單位）由後台「頁面」的「聯絡窗口」維護；未發布時退回設定裡的聯絡資訊。
   async function Contact() {
-    const res = await store.contact();
+    const [res, units, friends] = await Promise.all([
+      store.contact(), store.page('contact').catch(() => null), store.friends().catch(() => ({ items: [] })),
+    ]);
     const c = res.contact || {};
+    const k = res.consult || {};
     const rows = [['地址', c.address], ['電話', c.tel], ['傳真', c.fax], ['電子郵件', c.email]].filter(([, v]) => v);
+    const hours = [['服務時間', c.hours], ['線上諮詢值班時段', k.hours]].filter(([, v]) => v);
+    const links = (friends.items || []).filter((f) => f.url);
     return h('div', null,
       PageHead('聯絡我們'),
       h('div', { className: 'ur-wrap ur-narrow ur-page' },
-        rows.length
-          ? h('dl', { className: 'ur-dl' }, rows.flatMap(([k, v]) => [
-              h('dt', null, k),
-              h('dd', null, k === '電子郵件' ? h('a', { href: 'mailto:' + v }, v) : v),
-            ]))
-          : h('p', { className: 'ur-empty' }, '聯絡資訊尚未設定。')));
+        h('section', { className: 'ur-block' },
+          h('h2', null, '聯絡窗口'),
+          units && units.item
+            ? renderBody(units.item.body)
+            : rows.length
+              ? h('dl', { className: 'ur-dl' }, rows.flatMap(([kk, v]) => [
+                  h('dt', null, kk),
+                  h('dd', null, kk === '電子郵件' ? h('a', { href: 'mailto:' + v }, v) : v),
+                ]))
+              : h('p', { className: 'ur-empty' }, '聯絡資訊尚未設定。')),
+        hours.length ? h('section', { className: 'ur-block' },
+          h('h2', null, '服務時間'),
+          h('dl', { className: 'ur-dl' }, hours.flatMap(([kk, v]) => [h('dt', null, kk), h('dd', null, v)]))) : null,
+        h('div', { className: 'ur-callout' },
+          h('p', null, '對補助有疑問嗎？可以先查閱常見問答，或透過線上諮詢提問，值班人員會盡快回覆。'),
+          h('div', { className: 'ur-callout-actions' },
+            link('faq', null, { className: 'ur-btn ur-btn-ghost' }, '常見問答'),
+            link('consult', null, { className: 'ur-btn ur-btn-primary' }, '線上諮詢'))),
+        links.length ? h('section', { className: 'ur-block' },
+          h('h2', null, '相關連結'),
+          h('ul', { className: 'ur-linklist' }, links.map((f) => h('li', null,
+            h('a', { href: f.url, target: '_blank', rel: 'noopener noreferrer' },
+              h('span', null, f.name), h('span', { className: 'ur-ext', 'aria-hidden': 'true' }, '↗')))))) : null));
+  }
+
+  // ── 計畫介紹（計畫說明／補助辦法／申請流程）───────────────────────────────
+  async function InfoPage(slug) {
+    const page = (await store.page(slug)).item;
+    const tabs = NAV.find((n) => n.id === 'plan').children;
+    return h('div', null,
+      PageHead(page.title, [{ label: '計畫介紹', page: 'plan' }, { label: page.title }]),
+      h('div', { className: 'ur-wrap ur-narrow ur-page' },
+        h('nav', { className: 'ur-chips ur-tabs', 'aria-label': '計畫介紹' },
+          tabs.map((t) => link(t.id, null, { className: 'ur-chip' + (t.id === slug ? ' is-active' : ''), 'aria-current': t.id === slug ? 'page' : null }, t.label))),
+        renderBody(page.body),
+        h('div', { className: 'ur-callout' },
+          h('p', null, '還有疑問？先看常見問答，或透過線上諮詢提問。'),
+          h('div', { className: 'ur-callout-actions' },
+            link('faq', null, { className: 'ur-btn ur-btn-ghost' }, '常見問答'),
+            link('consult', null, { className: 'ur-btn ur-btn-primary' }, '線上諮詢')))));
+  }
+
+  // ── 常見問答 ─────────────────────────────────────────────────────────────
+  // 分類鈕＋關鍵字搜尋（問題與答案全文），點問題展開答案（<details>，鍵盤與報讀器原生支援）。
+  async function Faq() {
+    const data = await store.faqs();
+    const cats = data.categories || [];
+    const items = (data.items || []).map((f) => ({ ...f, text: (f.question + ' ' + plainText(f.answer)).toLowerCase() }));
+    let cat = null, query = '';
+    const container = h('div', null, PageHead('常見問答'));
+    const host = h('div', { className: 'ur-wrap ur-narrow ur-page' });
+    container.appendChild(host);
+    const input = h('input', { type: 'search', className: 'ur-search-input', placeholder: '輸入關鍵字，例如：電梯、透天、加碼', 'aria-label': '搜尋常見問答' });
+    input.addEventListener('input', () => { query = input.value.trim().toLowerCase(); rebuild(); });
+    const chipsSlot = h('div');
+    const results = h('div');
+    host.append(h('div', { className: 'ur-toolbar' }, chipsSlot,
+      h('form', { className: 'ur-search', role: 'search', onSubmit: (e) => { e.preventDefault(); } }, input)), results,
+      h('div', { className: 'ur-callout' },
+        h('p', null, '找不到您要的答案？歡迎透過線上諮詢提問。'),
+        h('div', { className: 'ur-callout-actions' }, link('consult', null, { className: 'ur-btn ur-btn-primary' }, '線上諮詢'))));
+    function rebuild() {
+      chipsSlot.replaceChildren(Chips(cats, cat, (c) => { cat = c; rebuild(); }));
+      const list = items.filter((f) => (!cat || f.category_id === cat.id) && (!query || f.text.includes(query)));
+      const groups = (cat ? [cat] : cats).map((ct) => ({ ct, qs: list.filter((f) => f.category_id === ct.id) })).filter((g) => g.qs.length);
+      results.replaceChildren(...[
+        query ? h('p', { className: 'ur-resultnote' }, '「', h('strong', null, input.value.trim()), '」共 ' + list.length + ' 則') : null,
+        groups.length ? groups.map((g) => h('section', { className: 'ur-faq-group' },
+          h('h2', null, g.ct.name),
+          g.qs.map((f) => h('details', { className: 'ur-faq' },
+            h('summary', null, h('span', { className: 'ur-faq-q', 'aria-hidden': 'true' }, 'Q'), f.question),
+            h('div', { className: 'ur-faq-a ur-prose', html: sanitizeHtml(f.answer) })))))
+          : h('p', { className: 'ur-empty' }, '查無符合的問答。'),
+      ].flat().filter(Boolean));
+    }
+    rebuild();
+    return container;
+  }
+
+  // ── 線上諮詢 ─────────────────────────────────────────────────────────────
+  // Turnstile 只在後端有設 secret 時啟用（/api/config 才會給 site key）
+  let _tsP = null;
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve();
+    if (_tsP) return _tsP;
+    _tsP = new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => { _tsP = null; rej(new Error('turnstile')); };
+      document.head.appendChild(sc);
+    });
+    return _tsP;
+  }
+  const TOWNSHIPS = ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉', '其他'];
+  async function Consult() {
+    const [res, faqData, cfg] = await Promise.all([store.contact(), store.faqs().catch(() => ({ categories: [] })), store.config().catch(() => ({}))]);
+    const k = res.consult || {};
+    const c = res.contact || {};
+    const field = (label, ctrl, opts) => h('label', { className: 'ur-field' + (opts && opts.wide ? ' is-wide' : '') },
+      h('span', null, label, opts && opts.req ? h('em', { 'aria-hidden': 'true' }, ' *') : null, opts && opts.hint ? h('small', null, opts.hint) : null), ctrl);
+    const f = {
+      name: h('input', { type: 'text', name: 'name', maxlength: '50', autocomplete: 'name', required: 'required' }),
+      phone: h('input', { type: 'tel', name: 'phone', maxlength: '30', autocomplete: 'tel' }),
+      email: h('input', { type: 'email', name: 'email', maxlength: '120', autocomplete: 'email' }),
+      township: h('select', { name: 'township' }, h('option', { value: '' }, '請選擇'), TOWNSHIPS.map((t) => h('option', { value: t }, t))),
+      building: h('select', { name: 'building_type' }, h('option', { value: '' }, '請選擇'), ['公寓', '透天', '不確定'].map((t) => h('option', { value: t }, t === '公寓' ? '公寓（4～6 層樓）' : t === '透天' ? '透天住宅' : t))),
+      category: h('select', { name: 'category' }, h('option', { value: '' }, '請選擇'), (faqData.categories || []).map((ct) => h('option', { value: ct.name }, ct.name))),
+      content: h('textarea', { name: 'content', rows: '6', maxlength: '2000', required: 'required', placeholder: '請描述您的問題，例如房屋屋齡、樓層數、想修繕的項目。' }),
+      agree: h('input', { type: 'checkbox', name: 'agree' }),
+      website: h('input', { type: 'text', name: 'website', tabindex: '-1', autocomplete: 'off' }),
+    };
+    const tsBox = h('div', { className: 'ur-turnstile' });
+    let tsId = null;
+    if (cfg && cfg.turnstileSiteKey) {
+      loadTurnstile().then(() => { tsId = window.turnstile.render(tsBox, { sitekey: cfg.turnstileSiteKey }); }).catch(() => {});
+    }
+    const msg = h('p', { className: 'ur-formmsg', role: 'status', 'aria-live': 'polite' });
+    const submit = h('button', { type: 'submit', className: 'ur-btn ur-btn-primary' }, '送出提問');
+    const form = h('form', { className: 'ur-form', noValidate: 'novalidate', onSubmit: async (e) => {
+      e.preventDefault();
+      msg.className = 'ur-formmsg is-err';
+      if (!f.name.value.trim()) { msg.textContent = '請填寫姓名。'; f.name.focus(); return; }
+      if (!f.phone.value.trim() && !f.email.value.trim()) { msg.textContent = '請至少填寫聯絡電話或電子郵件其中一項，方便我們回覆。'; f.phone.focus(); return; }
+      if (f.content.value.trim().length < 5) { msg.textContent = '請填寫提問內容。'; f.content.focus(); return; }
+      if (!f.agree.checked) { msg.textContent = '請勾選同意個人資料蒐集告知事項。'; f.agree.focus(); return; }
+      submit.disabled = true; msg.className = 'ur-formmsg'; msg.textContent = '送出中…';
+      try {
+        const r = await fetch('/api/inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+          name: f.name.value, phone: f.phone.value, email: f.email.value, township: f.township.value,
+          building_type: f.building.value, category: f.category.value, content: f.content.value,
+          agree: f.agree.checked, website: f.website.value,
+          turnstileToken: tsId != null && window.turnstile ? window.turnstile.getResponse(tsId) : undefined,
+        }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || '送出失敗，請稍後再試。');
+        form.replaceChildren(h('div', { className: 'ur-done' },
+          h('h3', null, '已收到您的提問'),
+          h('p', null, '值班人員將於' + (k.reply_sla || '2 個工作天內') + '以電話或電子郵件回覆您。'),
+          h('p', null, '案件編號：' + d.id)));
+      } catch (ex) {
+        msg.className = 'ur-formmsg is-err'; msg.textContent = ex.message;
+        submit.disabled = false;
+        if (tsId != null && window.turnstile) { try { window.turnstile.reset(tsId); } catch (_) { /* */ } }
+      }
+    } },
+      h('div', { className: 'ur-formgrid' },
+        field('姓名', f.name, { req: true }),
+        field('聯絡電話', f.phone, { hint: '電話或 Email 至少填一項' }),
+        field('電子郵件', f.email),
+        field('房屋所在鄉鎮市', f.township),
+        field('建物類型', f.building),
+        field('問題類別', f.category),
+        field('提問內容', f.content, { req: true, wide: true })),
+      h('div', { className: 'ur-hp', 'aria-hidden': 'true' }, h('label', null, '請勿填寫', f.website)),
+      h('div', { className: 'ur-privacy' },
+        h('p', null, h('strong', null, '個人資料蒐集告知：'),
+          '本表單蒐集您的姓名、聯絡方式、房屋所在鄉鎮市及提問內容，僅供本計畫線上諮詢回覆及統計使用，不作其他用途；計畫結束後依契約規定刪除。詳見',
+          link('privacy', null, null, '隱私權政策'), '。'),
+        h('label', { className: 'ur-check' }, f.agree, '我已閱讀並同意上述個人資料蒐集告知事項')),
+      tsBox, msg, h('div', { className: 'ur-formfoot' }, submit));
+
+    return h('div', null,
+      PageHead('線上諮詢'),
+      h('div', { className: 'ur-wrap ur-narrow ur-page' },
+        h('p', { className: 'ur-lead' }, '本計畫設有網路值班人員，提供線上即時諮詢服務。提問前，建議先查閱',
+          link('faq', null, null, '常見問答'), '，許多問題可以立即找到答案。'),
+        h('div', { className: 'ur-channels' },
+          h('section', { className: 'ur-channel' },
+            h('h2', null, 'LINE 即時諮詢'),
+            h('p', null, '適合簡短問題、需要來回確認，或想傳送房屋現況照片。'),
+            k.hours ? h('p', { className: 'ur-channel-meta' }, '值班時段：' + k.hours) : null,
+            k.line_id ? h('p', { className: 'ur-channel-meta' }, 'LINE ID：' + k.line_id) : null,
+            k.line_url
+              ? h('a', { className: 'ur-btn ur-btn-line', href: k.line_url, target: '_blank', rel: 'noopener noreferrer' }, '加入 LINE 好友')
+              : h('p', { className: 'ur-note' }, 'LINE 官方帳號即將開放，開放前請來電或來信洽詢。')),
+          cfg && cfg.inquiryForm
+            ? h('section', { className: 'ur-channel' },
+              h('h2', null, '線上提問表單'),
+              h('p', null, '24 小時收件，適合需要詳細說明的問題，或不使用 LINE 的民眾。'),
+              h('p', { className: 'ur-channel-meta' }, '回覆時限：' + (k.reply_sla || '2 個工作天內')),
+              c.tel ? h('p', { className: 'ur-channel-meta' }, '電話洽詢：' + c.tel) : null)
+            : h('section', { className: 'ur-channel' },
+              h('h2', null, '電話與電子郵件'),
+              h('p', null, '不使用 LINE，或需要詳細說明的問題，歡迎來電或來信。'),
+              c.hours ? h('p', { className: 'ur-channel-meta' }, '服務時間：' + c.hours) : null,
+              c.tel ? h('p', { className: 'ur-channel-meta' }, '電話：' + c.tel) : null,
+              c.email ? h('p', { className: 'ur-channel-meta' }, 'Email：', h('a', { href: 'mailto:' + c.email }, c.email)) : null)),
+        cfg && cfg.inquiryForm ? h('section', { className: 'ur-block', id: 'ask' }, h('h2', null, '我要提問'), form) : null));
   }
 
   // ── document page (privacy / terms) ───────────────────────────────────────
@@ -556,8 +798,11 @@
     const [cats, downloads] = await Promise.all([store.categories(), store.downloads()]);
     const sections = [
       { label: '首頁', page: 'home' },
+      { label: '計畫介紹', page: 'plan', children: NAV.find((n) => n.id === 'plan').children.map((c) => ({ label: c.label, page: c.id })) },
       { label: '最新公告', page: 'news', children: cats.map((n) => ({ label: n.name, page: 'news', arg: n.id })) },
-      { label: '檔案下載', page: 'downloads', children: uniqCats(downloads.items).map((c) => ({ label: c.name, page: 'downloads', arg: c.id })) },
+      { label: '資料下載', page: 'downloads', children: uniqCats(downloads.items).map((c) => ({ label: c.name, page: 'downloads', arg: c.id })) },
+      { label: '常見問答', page: 'faq' },
+      { label: '線上諮詢', page: 'consult' },
       { label: '聯絡我們', page: 'contact' },
       { label: '隱私權政策', page: 'privacy' },
       { label: '網站使用條款', page: 'terms' },
@@ -611,6 +856,9 @@
       else if (p === 'news') view = await NewsList(route.arg);
       else if (p === 'downloads') view = await Downloads(route.arg);
       else if (p === 'contact') view = await Contact();
+      else if (INFO_PAGES.includes(p)) view = await InfoPage(p);
+      else if (p === 'faq') view = await Faq();
+      else if (p === 'consult') view = await Consult();
       else if (p === 'sitemap') view = await Sitemap();
       else if (p === 'privacy') view = await DocPage('privacy');
       else if (p === 'terms') view = await DocPage('terms');

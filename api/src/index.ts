@@ -1,11 +1,17 @@
 import { Hono } from 'hono';
 import { admin } from './admin';
 import { resolveMeta, injectMeta } from './meta';
-import { background, edgeCache } from './platform';
+import { background, edgeCache, clientIp } from './platform';
+import { rlCheck, rlBump, verifyTurnstile } from './auth';
 
 // Turnstile Site Key（公開值；前端用）。Secret 為 Worker 機密 TURNSTILE_SECRET。
 // 上線前需為本站網域另申請一組 key（paa-web 那組綁在 paa.org.tw）；未設 secret 時登入不驗證。
 const TURNSTILE_SITE_KEY = '';
+
+// 網站線上提問表單＋後台諮詢收件匣：暫停（2026-11-09 使用者指示，諮詢可能不在本後台處理）。
+// 關閉時 POST /api/inquiries 回 404、前台線上諮詢頁不顯示表單（見 /api/config 的 inquiryForm），
+// 後台也不顯示「線上諮詢」模組（admin.js 的 MODULES）。程式與資料表保留，日後要啟用改成 true 即可。
+const INQUIRY_FORM_ENABLED = false;
 
 type Bindings = {
   DB: D1Database;
@@ -165,6 +171,7 @@ app.get('/api/health', (c) =>
 app.get('/api/config', (c) => c.json({
   turnstileSiteKey: c.env.TURNSTILE_SECRET ? TURNSTILE_SITE_KEY : null,
   env: c.env.ENVIRONMENT ?? 'unknown',
+  inquiryForm: INQUIRY_FORM_ENABLED,
 }));
 
 app.get('/api/health/db', async (c) => {
@@ -275,8 +282,66 @@ app.get('/api/legal/:key', async (c) => {
 });
 
 app.get('/api/contact', async (c) => {
-  const row = await c.env.DB.prepare("select \"value\" as v from settings where \"key\"='contact'").first<{ v: string }>();
-  return c.json({ contact: row ? pj(row.v) : null });
+  const rows = (await c.env.DB.prepare("select \"key\" as k, \"value\" as v from settings where \"key\" in ('contact','consult')").all<{ k: string; v: string }>()).results;
+  const get = (k: string) => { const r = rows.find((x) => x.k === k); return r ? pj(r.v) as Record<string, unknown> : null; };
+  const consult = get('consult');
+  // consult 只吐前台要顯示的欄位；notify_email（值班人員收通知的信箱）不外露
+  return c.json({
+    contact: get('contact'),
+    consult: consult ? { line_url: consult.line_url || '', line_id: consult.line_id || '', hours: consult.hours || '', reply_sla: consult.reply_sla || '' } : null,
+  });
+});
+
+// ── 頁面管理（計畫說明／補助辦法／申請流程／聯絡窗口）──────────────
+app.get('/api/pages/:slug', async (c) => {
+  const item = await c.env.DB.prepare(
+    "select slug,title,body,updated_at from pages where slug=? and status='published'",
+  ).bind(c.req.param('slug')).first();
+  if (!item) return c.json({ error: 'not found' }, 404);
+  return c.json({ item });
+});
+
+// ── 常見問答（公開）─────────────────────────────────────────
+app.get('/api/faqs', async (c) => {
+  const cats = (await c.env.DB.prepare('select id,name from faq_categories order by sort_order, id').all()).results;
+  const items = (await c.env.DB.prepare(
+    'select id,category_id,question,answer from faqs where is_active=1 order by sort_order, id',
+  ).all()).results;
+  return c.json({ categories: cats, items });
+});
+
+// ── 線上諮詢：提問表單（公開 POST）───────────────────────────
+// 防濫用：honeypot 欄位、Turnstile（有設 secret 才驗）、同 IP 每小時 5 件。
+const INQ_TOWNSHIPS = ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉', '其他'];
+const INQ_BUILDING = ['公寓', '透天', '不確定'];
+app.post('/api/inquiries', async (c) => {
+  if (!INQUIRY_FORM_ENABLED) return c.json({ error: 'not found' }, 404);
+  const b = await c.req.json().catch(() => ({} as any));
+  if (b.website) return c.json({ ok: true }); // honeypot：機器人填了隱藏欄位，假裝成功
+  const s = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
+  const name = s(b.name, 50);
+  const phone = s(b.phone, 30);
+  const email = s(b.email, 120);
+  const content = s(b.content, 2000);
+  const township = INQ_TOWNSHIPS.includes(b.township) ? b.township : null;
+  const building = INQ_BUILDING.includes(b.building_type) ? b.building_type : null;
+  const category = s(b.category, 30) || null;
+  if (!name) return c.json({ error: '請填寫姓名' }, 400);
+  if (!phone && !email) return c.json({ error: '請至少填寫聯絡電話或電子郵件其中一項' }, 400);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: '電子郵件格式不正確' }, 400);
+  if (content.length < 5) return c.json({ error: '請填寫提問內容' }, 400);
+  if (!b.agree) return c.json({ error: '請勾選同意個人資料蒐集告知事項' }, 400);
+  const ip = clientIp(c);
+  const rlKey = 'rl:inq:' + ip;
+  if (await rlCheck(c.env.KV, rlKey, 5)) return c.json({ error: '送出次數過多，請稍後再試，或改用電話聯繫' }, 429);
+  if (!(await verifyTurnstile(c.env.TURNSTILE_SECRET, b.turnstileToken, ip))) return c.json({ error: '人機驗證失敗，請重新驗證' }, 403);
+  // 類別需為現有常見問答分類，避免任意字串進統計
+  const okCat = category ? await c.env.DB.prepare('select 1 from faq_categories where name=?').bind(category).first() : null;
+  const r = await c.env.DB.prepare(
+    "insert into inquiries (channel,name,phone,email,township,building_type,category,content,ip) values ('web',?,?,?,?,?,?,?,?)",
+  ).bind(name, phone || null, email || null, township, building, okCat ? category : null, content, ip).run();
+  await rlBump(c.env.KV, rlKey, 3600);
+  return c.json({ ok: true, id: r.meta.last_row_id });
 });
 
 // ── 首頁聚合（一次取回 hero/sections/分類最新公告）──────
@@ -340,7 +405,7 @@ app.get('/sitemap.xml', async (c) => {
   const today = new Date().toISOString().slice(0, 10);
   const lm = (v: unknown) => (v ? String(v).slice(0, 10) : today);
   const urls: { loc: string; lastmod: string }[] = [];
-  for (const p of ['/', '/news', '/downloads', '/contact', '/privacy', '/terms']) urls.push({ loc: origin + p, lastmod: today });
+  for (const p of ['/', '/plan', '/subsidy', '/process', '/news', '/downloads', '/faq', '/consult', '/contact', '/privacy', '/terms', '/sitemap']) urls.push({ loc: origin + p, lastmod: today });
   const anns = (await c.env.DB.prepare("select id,updated_at from announcements where visibility='public' and status='published' order by id").all()).results as any[];
   for (const a of anns) urls.push({ loc: origin + '/news/' + a.id, lastmod: lm(a.updated_at) });
   const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

@@ -136,7 +136,9 @@
     });
   }
 
-  const MODULES = [['announcements', '公告'], ['attachments', '附件'], ['downloads', '檔案'], ['legal', '法律頁面'], ['friends', '相關連結'], ['hero', '輪播'], ['intro', '計畫說明'], ['settings', '設定'], ['admins', '管理員'], ['audit', '操作紀錄']];
+  // 'inquiries'（線上諮詢收件匣）暫停：諮詢可能不在本後台處理。要啟用時加回 ['inquiries', '線上諮詢']，
+  // 並把 api/src/index.ts 的 INQUIRY_FORM_ENABLED 改成 true。
+  const MODULES = [['announcements', '公告'], ['pages', '頁面'], ['faq', '常見問答'], ['attachments', '附件'], ['downloads', '檔案'], ['legal', '法律頁面'], ['friends', '相關連結'], ['hero', '輪播'], ['intro', '首頁簡介'], ['settings', '設定'], ['admins', '管理員'], ['audit', '操作紀錄']];
   // 這些模組僅最高管理員可見/可進入
   const SUPER_ONLY = new Set(['admins', 'audit']);
   const visibleModules = () => MODULES.filter(([k]) => !SUPER_ONLY.has(k) || (me && me.role === 'superadmin'));
@@ -194,6 +196,51 @@
         { col: 'access_scope', label: '適用層級', type: 'select', options: [['both', '公開＋會員'], ['public', '公開'], ['member', '會員']], hint: '設「會員」時，此分類底下檔案的「權限」會強制鎖成會員限定，避免手殘外流；設「公開」或「公開＋會員」則各檔案可自行選公開或會員限定。' },
         { col: 'sort_order', label: '排序', type: 'int' },
       ] },
+    pages: { title: '頁面', api: '/pages', noCreate: true, noDelete: true,
+      listNote: '前台「計畫介紹」選單的三頁（/plan、/subsidy、/process）與「聯絡我們」頁上方的聯絡窗口表格。頁面固定，只能編修內容、不能新增或刪除；設為「草稿」時前台該頁會顯示找不到頁面。',
+      cols: [['title', '標題'], ['slug', '前台網址', { plan: '/plan', subsidy: '/subsidy', process: '/process', contact: '/contact（聯絡窗口）' }], ['status', '狀態', { published: '已發布', draft: '草稿' }], ['updated_at', '最後修改', 'utc']],
+      fields: [
+        { col: 'title', label: '標題', req: true },
+        { col: 'status', label: '狀態', type: 'select', options: [['published', '已發布'], ['draft', '草稿（前台不顯示）']] },
+        { col: 'body', label: '內文', type: 'richtext', hint: '「標題」用於「一、二、三」大段，「小標」用於「（一）（二）」小段。金額與條件建議用表格呈現。' },
+      ] },
+    faqs: { title: '常見問答', api: '/faqs', searchable: '搜尋問題…', filterable: 'category_id',
+      listNote: '前台依分類分組、同分類內依「排序」數字由小到大排列。線上諮詢中反覆出現的問題，請定期增補到這裡。',
+      cols: [['category_id', '分類'], ['question', '問題'], ['sort_order', '排序'], ['is_active', '顯示', 'bool']],
+      fields: [
+        { col: 'category_id', label: '分類', type: 'ref', ref: '/faq-categories', refLabel: 'name', req: true },
+        { col: 'question', label: '問題', req: true },
+        { col: 'answer', label: '回答', type: 'richtext', req: true, hint: '可插入連結，例如連到 /subsidy（補助辦法）、/process（申請流程）、/downloads（資料下載）。' },
+        { col: 'sort_order', label: '排序', type: 'int' },
+        { col: 'is_active', label: '顯示', type: 'bool', defaultChecked: true },
+      ] },
+    faqCategories: { title: '問答分類', api: '/faq-categories',
+      listNote: '縣府函文指定的五類：申請資格、補助項目、申請程序、審查作業、其他。分類名稱也是線上提問表單的「問題類別」選項。',
+      cols: [['name', '名稱'], ['sort_order', '排序']],
+      fields: [{ col: 'name', label: '名稱', req: true }, { col: 'sort_order', label: '排序', type: 'int' }] },
+    inquiries: { title: '諮詢案件', api: '/inquiries', paginate: true, searchable: '搜尋姓名、電話、內容…', filterable: 'status',
+      filterAll: '全部狀態', filterOptions: [['new', '待處理'], ['processing', '處理中'], ['replied', '已回覆'], ['closed', '已結案']],
+      createLabel: '＋ 登錄 LINE／電話案件',
+      listNote: '網站提問表單送出後自動進來（管道＝網站）。LINE 或電話的諮詢請按「登錄」建檔，月報統計才會完整。填寫回覆內容並儲存後，系統自動記錄回覆人與時間。',
+      cols: [['created_at', '收件時間', 'utc'], ['channel', '管道', { web: '網站', line: 'LINE', phone: '電話' }], ['name', '姓名'], ['category', '類別'], ['township', '鄉鎮'], ['status', '狀態']],
+      fields: [
+        { col: 'meta', type: 'info', render: (it) => it.id ? [
+          '案件編號 ' + it.id, '收件時間 ' + fmtUtc(it.created_at),
+          it.replied_at ? '最後回覆 ' + fmtUtc(it.replied_at) : null,
+          it.channel === 'web' ? '網站表單進件：提問人填寫的資料不可修改' : null,
+        ].filter(Boolean).join('　·　') : '登錄 LINE 或電話諮詢案件' },
+        { col: 'channel', label: '管道', type: 'select', options: [['line', 'LINE'], ['phone', '電話'], ['web', '網站表單']], lockWeb: true },
+        { col: 'name', label: '姓名／稱呼', req: true, lockWeb: true },
+        { col: 'phone', label: '電話', lockWeb: true },
+        { col: 'email', label: '電子郵件', lockWeb: true },
+        { col: 'township', label: '鄉鎮市', type: 'select', options: [['', '—'], ['馬公市', '馬公市'], ['湖西鄉', '湖西鄉'], ['白沙鄉', '白沙鄉'], ['西嶼鄉', '西嶼鄉'], ['望安鄉', '望安鄉'], ['七美鄉', '七美鄉'], ['其他', '其他']], lockWeb: true },
+        { col: 'building_type', label: '建物類型', type: 'select', options: [['', '—'], ['公寓', '公寓'], ['透天', '透天'], ['不確定', '不確定']], lockWeb: true },
+        { col: 'category', label: '問題類別', type: 'select', optionsFrom: '/faq-categories' },
+        { col: 'content', label: '提問內容', type: 'textarea', req: true, lockWeb: true },
+        { col: 'reply', label: '回覆內容', type: 'textarea', hint: '記錄回覆給民眾的內容（以電話或 Email 回覆後填寫）。' },
+        { col: 'status', label: '狀態', type: 'select', options: [['new', '待處理'], ['processing', '處理中'], ['replied', '已回覆'], ['closed', '已結案']], hint: '填了回覆內容並儲存，「待處理／處理中」會自動改為「已回覆」。' },
+        { col: 'note', label: '內部備註', type: 'textarea', hint: '轉介紀錄等，不會給民眾看到。例：已轉服務團 ○○ 建築師、已轉縣府承辦。' },
+      ] },
     announcementCategories: { title: '公告分類', api: '/announcement-categories',
       cols: [['name', '名稱'], ['scope', '適用對象', { public: '公開', member: '會員限定' }], ['sort_order', '排序']],
       fields: [
@@ -205,8 +252,15 @@
   };
 
   // 欄位顯示：hint='bool' → ✓/—；hint 為物件 → 當對照表（值→顯示文字）；其餘原樣。
+  // D1 的 datetime('now') 存 UTC（'YYYY-MM-DD HH:MM:SS'），顯示時換成台灣時間
+  const fmtUtc = (v) => {
+    if (!v) return '';
+    const d = new Date(String(v).replace(' ', 'T') + 'Z');
+    return isNaN(d) ? String(v) : d.toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 16);
+  };
   const fmtCell = (v, hint) => {
     if (hint === 'bool') return v ? '✓' : '—';
+    if (hint === 'utc') return fmtUtc(v);
     if (hint === 'img') return v ? h('img', { className: 'pa-cell-thumb', src: assetUrl(v), alt: '' }) : h('span', { className: 'pa-cell-thumb pa-cell-thumb-none', title: '未設定圖片（文字版主視覺）' });
     if (hint && typeof hint === 'object') return hint[v] != null ? hint[v] : (v == null ? '' : String(v));
     return v == null ? '' : String(v);
@@ -415,6 +469,8 @@
     if (k === 'announcements') chrome('announcements', announcementsResource(arg));
     else if (k === 'legal') chrome('legal', legalResource(arg));
     else if (k === 'downloads') chrome('downloads', downloadsResource(arg));
+    else if (k === 'faq') chrome('faq', faqResource(arg));
+    else if (k === 'inquiries') chrome('inquiries', inquiriesResource(arg));
     else if (k === 'settings') chrome('settings', settingsResource());
     else if (k === 'intro') chrome('intro', introResource());
     else if (k === 'admins') chrome('admins', adminsResource());
@@ -750,36 +806,47 @@
     return host;
   }
 
-  // 系統設定：聯絡資訊
+  // 系統設定：聯絡資訊、線上諮詢
   function settingsResource() {
     const host = h('div');
     (async () => {
       host.appendChild(h('div', { className: 'pa-loading' }, '載入中…'));
       const { settings } = await api('/settings');
       const c = settings.contact || {};
-      const f = {};
-      f.address = h('input', { type: 'text', value: c.address || '' });
-      f.tel = h('input', { type: 'text', value: c.tel || '' });
-      f.fax = h('input', { type: 'text', value: c.fax || '' });
-      f.email = h('input', { type: 'text', value: c.email || '' });
+      const k = settings.consult || {};
+      const inp = (v, ph) => h('input', { type: 'text', value: v || '', placeholder: ph || '' });
+      const f = {
+        address: inp(c.address), tel: inp(c.tel), fax: inp(c.fax), email: inp(c.email),
+        hours: inp(c.hours, '例：週一至週五 08:00–12:00、13:30–17:30'),
+        line_url: inp(k.line_url, 'https://lin.ee/xxxxxxx'), line_id: inp(k.line_id, '@xxxxxxx'),
+        consult_hours: inp(k.hours, '例：週一至週五 09:00–17:00'),
+        reply_sla: inp(k.reply_sla, '例：2 個工作天內'),
+        notify_email: inp(k.notify_email, '收到網站提問時通知的信箱（功能開發中）'),
+      };
       const msg = h('div', { className: 'pa-err' }); msg.style.display = 'none';
       const save = async () => {
+        const t = (el) => el.value.trim();
+        if (t(f.line_url) && !/^https:\/\//i.test(t(f.line_url))) { msg.textContent = 'LINE 加入好友連結需以 https:// 開頭'; msg.style.color = 'var(--red)'; msg.style.display = ''; return; }
         try {
-          await api('/settings/contact', { method: 'PUT', body: { value: { address: f.address.value.trim(), tel: f.tel.value.trim(), fax: f.fax.value.trim(), email: f.email.value.trim() } } });
-          msg.textContent = '已儲存 ✓'; msg.style.color = 'var(--green)'; msg.style.display = '';
+          await api('/settings/contact', { method: 'PUT', body: { value: { address: t(f.address), tel: t(f.tel), fax: t(f.fax), email: t(f.email), hours: t(f.hours) } } });
+          await api('/settings/consult', { method: 'PUT', body: { value: { line_url: t(f.line_url), line_id: t(f.line_id), hours: t(f.consult_hours), reply_sla: t(f.reply_sla), notify_email: t(f.notify_email) } } });
+          msg.textContent = '已儲存 ✓（前台約 1 分鐘內更新）'; msg.style.color = 'var(--green)'; msg.style.display = '';
         } catch (ex) { msg.textContent = ex.message; msg.style.color = 'var(--red)'; msg.style.display = ''; }
       };
+      const fld = (label, el) => h('label', { className: 'pa-field' }, h('span', null, label), el);
+      const h3 = (t) => h('h3', { style: 'margin:10px 0 6px;font-size:15px;color:var(--navy)' }, t);
       host.innerHTML = '';
       host.appendChild(h('div', null,
         h('div', { className: 'pa-h' }, h('h2', null, '系統設定')),
         h('div', { className: 'pa-form' },
-          h('h3', { style: 'margin:0 0 6px;font-size:15px;color:var(--navy)' }, '聯絡資訊（前台聯絡我們頁）'),
-          h('div', { className: 'pa-form-row' },
-            h('label', { className: 'pa-field' }, h('span', null, '地址'), f.address),
-            h('label', { className: 'pa-field' }, h('span', null, '電話'), f.tel)),
-          h('div', { className: 'pa-form-row' },
-            h('label', { className: 'pa-field' }, h('span', null, '傳真'), f.fax),
-            h('label', { className: 'pa-field' }, h('span', null, '電子郵件'), f.email)),
+          h3('聯絡資訊（頁尾、聯絡我們頁）'),
+          h('div', { className: 'pa-form-row' }, fld('地址', f.address), fld('電話', f.tel)),
+          h('div', { className: 'pa-form-row' }, fld('傳真', f.fax), fld('電子郵件', f.email)),
+          fld('服務時間', f.hours),
+          h3('線上諮詢（線上諮詢頁、聯絡我們頁）'),
+          h('div', { className: 'pa-form-row' }, fld('LINE 加入好友連結', f.line_url), fld('LINE ID', f.line_id)),
+          h('p', { className: 'pa-hint', style: 'margin:-4px 0 4px' }, 'LINE 連結留空時，前台顯示「LINE 官方帳號即將開放」。'),
+          h('div', { className: 'pa-form-row' }, fld('網路值班時段', f.consult_hours), fld('表單回覆時限', f.reply_sla)),
           msg,
           h('div', { className: 'pa-form-foot' }, h('button', { className: 'btn-accent', onClick: save }, '儲存設定')))));
     })();
@@ -791,6 +858,55 @@
     return subnavModule('downloads', [['docs', '文件'], ['cats', '分類']], arg, (cur, area) => {
       area.appendChild(genericResource(cur === 'docs' ? RES.documents : RES.documentCategories, 'downloads'));
     });
+  }
+
+  // 常見問答模組：問答 / 分類 子導覽
+  function faqResource(arg) {
+    return subnavModule('faq', [['list', '問答'], ['cats', '分類']], arg, (cur, area) => {
+      area.appendChild(genericResource(cur === 'list' ? RES.faqs : RES.faqCategories, 'faq'));
+    });
+  }
+
+  // 線上諮詢模組：收件匣 / 月報統計
+  function inquiriesResource(arg) {
+    return subnavModule('inquiries', [['list', '收件匣'], ['report', '月報統計']], arg, (cur, area) => {
+      area.appendChild(cur === 'list' ? genericResource(RES.inquiries, 'inquiries') : inquiryReport());
+    });
+  }
+  function inquiryReport() {
+    const host = h('div');
+    const tw = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 7);
+    const month = h('input', { type: 'month', value: tw });
+    const out = h('div');
+    const csv = h('a', { className: 'btn-ghost btn-sm', style: 'text-decoration:none', target: '_blank', rel: 'noopener noreferrer' }, '匯出明細 CSV');
+    const CH = { web: '網站表單', line: 'LINE', phone: '電話' };
+    const ST = { new: '待處理', processing: '處理中', replied: '已回覆', closed: '已結案' };
+    const table = (title, rows, map) => h('div', { style: 'flex:1 1 220px;min-width:0' },
+      h('h3', { style: 'margin:0 0 6px;font-size:15px;color:var(--navy)' }, title),
+      h('table', { className: 'pa-table' },
+        h('tbody', null, rows.length ? rows.map((r) => h('tr', null, h('td', null, (map && map[r.k]) || r.k), h('td', { style: 'text-align:right' }, r.n)))
+          : h('tr', null, h('td', { style: 'color:#999' }, '無資料')))));
+    async function load() {
+      if (!month.value) return;
+      csv.href = '/api/admin/inquiries-report?format=csv&month=' + encodeURIComponent(month.value);
+      out.innerHTML = ''; out.appendChild(h('div', { className: 'pa-loading' }, '載入中…'));
+      try {
+        const r = await api('/inquiries-report?month=' + encodeURIComponent(month.value));
+        out.innerHTML = '';
+        out.appendChild(h('div', null,
+          h('p', { style: 'font-size:15px' }, '本月收件 ', h('strong', null, String(r.total)), ' 件，已回覆／結案 ', h('strong', null, String(r.done)), ' 件',
+            r.avgReplyHours != null ? '，平均回覆時間 ' + r.avgReplyHours + ' 小時' : ''),
+          h('div', { style: 'display:flex;flex-wrap:wrap;gap:16px' },
+            table('依管道', r.byChannel, CH), table('依問題類別', r.byCategory), table('依鄉鎮市', r.byTownship), table('依狀態', r.byStatus, ST))));
+      } catch (ex) { out.innerHTML = ''; out.appendChild(h('div', { className: 'pa-err' }, ex.message)); }
+    }
+    month.addEventListener('change', load);
+    host.appendChild(h('div', null,
+      h('div', { className: 'pa-h' }, h('h2', null, '月報統計')),
+      h('p', { className: 'pa-hint' }, '依收件月份（台灣時間）統計，可作為工作報告附件；平均回覆時間＝收件到第一次填寫回覆的時間。匯出的 CSV 可直接用 Excel 開啟。'),
+      h('div', { className: 'pa-subnav' }, month, csv), out));
+    load();
+    return host;
   }
 
   // ── 共用：模組內頁籤導覽（如公告的「公告／分類」、關於我們的五個頁籤）──────
@@ -839,11 +955,14 @@
     function openForm(id) { if (hashKey) enterDetail(hashKey, id); showForm(id); }
     function backToList() { if (!hashKey || !leaveDetail(hashKey)) showList(); }
     async function showList() {
+      if (window.tinymce) tinymce.remove(); // 離開編輯頁：清掉 richtext 欄位的編輯器，下次開表單才不會撞 id
       host.innerHTML = '';
       // res.filterable 指向某個 ref 型欄位（如 category_id）：抓一次該欄位的完整清單，
       // 同時用來（1）把清單裡的 id 欄位換成可讀名稱、（2）當篩選下拉的選項。
-      const filterField = res.filterable && res.fields.find((f) => f.col === res.filterable);
-      const refItems = filterField ? (await api(filterField.ref)).items : [];
+      // res.filterOptions：固定選項的篩選（如諮詢案件的狀態），不必打 API
+      const filterField = res.filterable && (res.filterOptions ? { refLabel: 'name' } : res.fields.find((f) => f.col === res.filterable));
+      const refItems = res.filterOptions ? res.filterOptions.map(([id, name]) => ({ id, name }))
+        : filterField ? (await api(filterField.ref)).items : [];
       const refLabel = Object.fromEntries(refItems.map((it) => [String(it.id), it[filterField.refLabel || 'name']]));
       const headers = [...res.cols.map((c) => c[1]), '操作'];
       const rowEl = (it) => h('tr', null,
@@ -854,13 +973,13 @@
               ? h('a', { className: 'btn-ghost btn-sm', style: 'text-decoration:none', href: '/api/admin' + res.api + '/' + it.id + '/download', target: '_blank', rel: 'noopener noreferrer' }, '下載')
               : h('button', { className: 'btn-ghost btn-sm', disabled: 'disabled', title: '尚未上傳檔案，無法下載。' }, '下載'))
             : null,
-          h('button', { className: 'btn-ghost btn-sm', onClick: () => openForm(it.id) }, '編輯'),
-          h('button', { className: 'btn-danger btn-sm', onClick: () => del(it.id) }, '刪除'))));
+          h('button', { className: 'btn-ghost btn-sm', onClick: () => openForm(it.id) }, res.editLabel || '編輯'),
+          res.noDelete ? null : h('button', { className: 'btn-danger btn-sm', onClick: () => del(it.id) }, '刪除'))));
       const renderTable = (items) => h('table', { className: 'pa-table' },
         h('thead', null, h('tr', null, headers.map((t) => h('th', null, t)))),
         h('tbody', null, items.length ? items.map(rowEl) : h('tr', null, h('td', { colspan: String(headers.length), style: 'text-align:center;color:#999;padding:26px' }, (query || filterVal) ? '查無符合的資料' : '尚無資料'))));
       const headerBar = h('div', { className: 'pa-h' }, h('h2', null, res.title),
-        h('button', { className: 'btn-accent btn-sm', onClick: () => openForm(null) }, '＋ 新增'));
+        res.noCreate ? null : h('button', { className: 'btn-accent btn-sm', onClick: () => openForm(null) }, res.createLabel || '＋ 新增'));
       const listNote = res.listNote ? h('p', { className: 'pa-hint', style: 'margin:-6px 0 12px' }, res.listNote) : null;
       const qs = () => (query ? '&q=' + encodeURIComponent(query) : '') + (filterVal ? '&' + res.filterable + '=' + encodeURIComponent(filterVal) : '');
       const pager = res.paginate ? makePager((offset) => api(res.api + '?limit=50&offset=' + offset + qs()), renderTable) : null;
@@ -870,7 +989,7 @@
         const doSearch = () => { query = search.value.trim(); pager ? pager.load(true) : showList(); };
         search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
         const filterSel = res.filterable ? h('select', { style: 'min-width:140px' },
-          [['', '全部分類'], ...refItems.map((it) => [String(it.id), it[filterField.refLabel || 'name']])]
+          [['', res.filterAll || '全部分類'], ...refItems.map((it) => [String(it.id), it[filterField.refLabel || 'name']])]
             .map(([v, l]) => h('option', { value: v, ...(String(filterVal) === v ? { selected: 'selected' } : {}) }, l))) : null;
         if (filterSel) filterSel.addEventListener('change', () => { filterVal = filterSel.value; pager ? pager.load(true) : showList(); });
         const hasFilter = query || filterVal;
@@ -892,6 +1011,7 @@
       catch (ex) { alert('刪除失敗：' + ex.message); }
     }
     async function showForm(id) {
+      if (window.tinymce) tinymce.remove();
       host.innerHTML = ''; host.appendChild(h('div', { className: 'pa-loading' }, '載入中…'));
       let item = {};
       if (id) item = (await api(res.api + '/' + id)).item;
@@ -900,8 +1020,25 @@
       for (const rf of res.fields) if (rf.type === 'ref') refData[rf.col] = (await api(rf.ref)).items;
       // 按鈕「參數」下拉的選項：只有帶按鈕欄位的模組（輪播）才抓
       const btnArgs = res.fields.some((rf) => rf.type === 'buttons') ? await loadBtnArgOptions() : null;
+      // optionsFrom：select 的選項從 API 清單（name）抓；舊資料的值不在清單裡時補一個選項保住它
+      const dynOpts = {};
+      for (const rf of res.fields) {
+        if (!rf.optionsFrom) continue;
+        const names = ((await api(rf.optionsFrom)).items || []).map((x) => x.name);
+        const cur = item[rf.col];
+        dynOpts[rf.col] = [['', '—'], ...names.map((n) => [n, n]), ...(cur && !names.includes(cur) ? [[cur, cur + '（已不在分類清單）']] : [])];
+      }
+      const richtexts = [];
       const fieldRow = (f) => {
         const v = item[f.col];
+        if (f.type === 'info') return h('p', { className: 'pa-hint', style: 'margin:0' }, f.render(item));
+        if (f.type === 'richtext') {
+          const ta = h('textarea', { id: 'rt-' + f.col, className: 'pa-richtext' });
+          const ctrl = { el: ta, f, html: v || '' };
+          ctrls[f.col] = ctrl; richtexts.push(ctrl);
+          return h('label', { className: 'pa-field' }, h('span', null, f.label + (f.req ? ' ＊' : ''), f.hint ? infoTip(f.hint) : null), ta);
+        }
+        if (f.optionsFrom) f = { ...f, options: dynOpts[f.col] };
         if (f.type === 'hidden') { const el = h('input', { type: 'hidden', value: v == null ? '' : v }); ctrls[f.col] = { el, f }; return el; }
         if (f.type === 'file') {
           const hid = h('input', { type: 'hidden', value: v == null ? '' : v });
@@ -971,7 +1108,7 @@
             status, f.hint ? h('span', { className: 'pa-hint' }, f.hint) : null, hid);
         }
         if (f.type === 'buttons') {
-          const PAGES = [['', '（不連結）'], ['home', '首頁'], ['news', '最新公告'], ['downloads', '檔案下載'], ['contact', '聯絡我們'], ['external', '任意網站（外部連結）']];
+          const PAGES = [['', '（不連結）'], ['home', '首頁'], ['plan', '計畫說明'], ['subsidy', '補助辦法'], ['process', '申請流程'], ['news', '最新公告'], ['downloads', '資料下載'], ['faq', '常見問答'], ['consult', '線上諮詢'], ['contact', '聯絡我們'], ['external', '任意網站（外部連結）']];
           const listEl = h('div', { className: 'pa-btnlist' });
           const rows = [];
           const addRow = (b) => {
@@ -1081,6 +1218,8 @@
         else if (f.type === 'select') el = h('select', null, f.options.map(([ov, ol]) => h('option', { value: ov, ...(v === ov ? { selected: 'selected' } : {}) }, ol)));
         else el = h('input', { type: 'text', value: v == null ? '' : v });
         ctrls[f.col] = { el, f };
+        // lockWeb：網站表單進件的原始資料（後端也會擋，這裡只是讓畫面一看就知道不能改）
+        if (f.lockWeb && item.channel === 'web') el.disabled = true;
         if (f.type === 'bool') return h('label', { className: 'pa-check' }, el, f.label);
         return h('label', { className: 'pa-field' }, h('span', null, f.label + (f.req ? ' ＊' : '')), el, f.hint ? h('span', { className: 'pa-hint' }, f.hint) : null);
       };
@@ -1118,6 +1257,11 @@
             else if (f.type === 'json') payload[k] = el.value.trim() ? JSON.parse(el.value) : null;
             else if (f.type === 'ref') payload[k] = el.value ? Number(el.value) : null;
             else if (f.type === 'file' || f.type === 'image' || f.type === 'hidden' || f.type === 'radio') payload[k] = el.value || null;
+            else if (f.type === 'richtext') {
+              const ed = window.tinymce && tinymce.get(el.id);
+              const html = ed ? ed.getContent() : el.value;
+              payload[k] = (html && html !== '<p><br></p>') ? html : null;
+            }
             else payload[k] = el.value.trim() || null;
           }
         } catch (ex) { saveBtn.disabled = false; saveMsg.textContent = ''; err.textContent = 'JSON 格式錯誤：' + ex.message; err.style.display = ''; return; }
@@ -1135,6 +1279,16 @@
           h('div', { className: 'pa-form-foot' },
             saveBtn,
             h('button', { className: 'btn-ghost', onClick: backToList }, '取消'), saveMsg))));
+      if (richtexts.length) {
+        try { await loadTinyMce(); } catch (e) { /* 載入失敗 → 退回 textarea */ }
+        for (const rt of richtexts) {
+          if (!initTinyMce(rt.el, rt.html)) {
+            rt.el.setAttribute('rows', '12');
+            rt.el.style.cssText = 'width:100%;font-family:inherit';
+            rt.el.value = rt.html;
+          }
+        }
+      }
     }
     showList();
     return host;

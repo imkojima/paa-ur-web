@@ -567,6 +567,8 @@ type Field = { col: string; kind?: 'int' | 'bool' | 'json' | 'text'; required?: 
 function registerCrud(base: string, table: string, fields: Field[], opts: {
   fileCol?: string; paginate?: boolean; listOrder?: string; searchCol?: string; filterCol?: string;
   beforeSave?: (o: any, c: any) => Promise<void> | void;
+  // 刪除前檢查：回傳錯誤訊息字串即拒絕刪除（如分類底下仍有資料）
+  beforeDelete?: (id: string, c: any) => Promise<string | null>;
 } = {}) {
   const cols = fields.map((f) => f.col);
   const jsonCols = fields.filter((f) => f.kind === 'json').map((f) => f.col);
@@ -645,6 +647,10 @@ function registerCrud(base: string, table: string, fields: Field[], opts: {
   admin.delete(base + '/:id', async (c) => {
     if (!canWrite(c)) return c.json({ error: 'forbidden' }, 403);
     const id = c.req.param('id');
+    if (opts.beforeDelete) {
+      const why = await opts.beforeDelete(String(id), c);
+      if (why) return c.json({ error: why }, 400);
+    }
     if (opts.fileCol) {
       const row = await c.env.DB.prepare(`select ${opts.fileCol} as fp from ${table} where id=?`).bind(id).first<any>();
       if (row && row.fp) await deleteR2(c, row.fp);
@@ -782,4 +788,122 @@ admin.put('/settings/:key', async (c) => {
   ).bind(key, JSON.stringify(b.value ?? null), now()).run();
   await audit(c, 'update', 'settings', key);
   return c.json({ ok: true });
+});
+
+// ── 頁面管理（計畫說明／補助辦法／申請流程／聯絡窗口）──────────────
+// 頁面與前台路由一對一（slug 固定），後台只能編修、不能新增或刪除，避免做出前台沒有入口的孤兒頁。
+admin.get('/pages', async (c) => {
+  const { results } = await c.env.DB.prepare('select id,slug,title,status,sort_order,updated_at from pages order by sort_order, id').all();
+  return c.json({ items: results });
+});
+admin.get('/pages/:id', async (c) => {
+  const item = await c.env.DB.prepare('select * from pages where id=?').bind(c.req.param('id')).first();
+  if (!item) return c.json({ error: 'not found' }, 404);
+  return c.json({ item });
+});
+admin.put('/pages/:id', async (c) => {
+  if (!canWrite(c)) return c.json({ error: 'forbidden' }, 403);
+  const id = c.req.param('id');
+  const b = await c.req.json().catch(() => ({} as any));
+  const title = String(b.title || '').trim();
+  if (!title) return c.json({ error: '標題為必填' }, 400);
+  const status = b.status === 'draft' ? 'draft' : 'published';
+  const r = await c.env.DB.prepare('update pages set title=?, body=?, status=?, updated_at=? where id=?')
+    .bind(title, String(b.body ?? ''), status, now(), id).run();
+  if (!r.meta.changes) return c.json({ error: 'not found' }, 404);
+  await audit(c, 'update', 'page', id, { title, status });
+  return c.json({ ok: true });
+});
+
+// ── 常見問答 ─────────────────────────────────────────────────
+registerCrud('/faq-categories', 'faq_categories', [
+  { col: 'name', required: true }, { col: 'sort_order', kind: 'int' },
+], {
+  beforeDelete: async (id, c) => {
+    const n = await c.env.DB.prepare('select count(*) as n from faqs where category_id=?').bind(id).first();
+    return n && n.n > 0 ? `此分類下還有 ${n.n} 則問答，請先移到其他分類或刪除` : null;
+  },
+});
+registerCrud('/faqs', 'faqs', [
+  { col: 'category_id', kind: 'int', required: true }, { col: 'question', required: true }, { col: 'answer', required: true },
+  { col: 'is_active', kind: 'bool', def: 1 }, { col: 'sort_order', kind: 'int' }, { col: 'updated_at' },
+], {
+  searchCol: 'question', filterCol: 'category_id', listOrder: 'category_id, sort_order, id',
+  beforeSave: (o) => { o.updated_at = now(); },
+});
+
+// ── 線上諮詢收件匣 ───────────────────────────────────────────
+// 網站表單進件（channel=web）由公開 POST /api/inquiries 寫入；值班人員也可在此登錄 LINE／電話案件。
+// 網站進件的原始提問（姓名、聯絡方式、內容）保留原貌，後台不可改；回覆時自動記錄回覆人與時間。
+const INQ_STATUS = ['new', 'processing', 'replied', 'closed'];
+const INQ_CHANNEL = ['web', 'line', 'phone'];
+registerCrud('/inquiries', 'inquiries', [
+  { col: 'channel', def: 'line' }, { col: 'name', required: true }, { col: 'phone' }, { col: 'email' },
+  { col: 'township' }, { col: 'building_type' }, { col: 'category' }, { col: 'content', required: true },
+  { col: 'status', def: 'new' }, { col: 'reply' }, { col: 'note' },
+  { col: 'replied_by', kind: 'int' }, { col: 'replied_at' }, { col: 'updated_at' },
+], {
+  paginate: true, listOrder: 'created_at desc, id desc',
+  searchCol: "(name || ' ' || coalesce(phone,'') || ' ' || coalesce(email,'') || ' ' || content)", filterCol: 'status',
+  beforeSave: async (o, c) => {
+    const id = c.req.param('id');
+    const prev = id ? await c.env.DB.prepare('select * from inquiries where id=?').bind(id).first() : null;
+    if (prev && prev.channel === 'web') {
+      for (const k of ['channel', 'name', 'phone', 'email', 'township', 'building_type', 'content']) o[k] = prev[k];
+    }
+    if (!INQ_CHANNEL.includes(o.channel)) o.channel = 'line';
+    if (!INQ_STATUS.includes(o.status)) o.status = 'new';
+    const replyChanged = o.reply && (!prev || prev.reply !== o.reply);
+    if (replyChanged) {
+      o.replied_at = now(); o.replied_by = c.get('admin').uid;
+      if (o.status === 'new' || o.status === 'processing') o.status = 'replied';
+    } else {
+      o.replied_at = prev ? prev.replied_at : null; o.replied_by = prev ? prev.replied_by : null;
+    }
+    o.updated_at = now();
+  },
+});
+
+// 月報：依台灣時間的月份（created_at 是 UTC，+8 小時換算）統計件數與平均回覆時間；format=csv 匯出明細。
+admin.get('/inquiries-report', async (c) => {
+  const month = String(c.req.query('month') || '');
+  if (!/^\d{4}-\d{2}$/.test(month)) return c.json({ error: '請指定月份（YYYY-MM）' }, 400);
+  const where = "strftime('%Y-%m', datetime(i.created_at, '+8 hours')) = ?";
+  if (c.req.query('format') === 'csv') {
+    const { results } = await c.env.DB.prepare(
+      `select i.*, a.name as replier from inquiries i left join admin_users a on a.id=i.replied_by where ${where} order by i.created_at`,
+    ).bind(month).all<any>();
+    const tw = (v: string | null) => (v ? new Date(v.replace(' ', 'T') + 'Z').toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 16) : '');
+    const CH: Record<string, string> = { web: '網站表單', line: 'LINE', phone: '電話' };
+    const ST: Record<string, string> = { new: '待處理', processing: '處理中', replied: '已回覆', closed: '已結案' };
+    const cell = (v: unknown) => {
+      let t = String(v ?? '');
+      if (/^[=+\-@]/.test(t)) t = "'" + t; // 防 CSV 公式注入
+      return '"' + t.replace(/"/g, '""') + '"';
+    };
+    const head = ['編號', '收件時間', '管道', '姓名', '電話', 'Email', '鄉鎮市', '建物類型', '問題類別', '提問內容', '狀態', '回覆內容', '回覆人', '回覆時間', '內部備註'];
+    const lines = [head.map(cell).join(',')].concat(results.map((r) => [
+      r.id, tw(r.created_at), CH[r.channel] || r.channel, r.name, r.phone, r.email, r.township, r.building_type, r.category,
+      r.content, ST[r.status] || r.status, r.reply, r.replier, tw(r.replied_at), r.note,
+    ].map(cell).join(',')));
+    await audit(c, 'export', 'inquiries', month);
+    return new Response('﻿' + lines.join('\r\n'), { headers: {
+      'content-type': 'text/csv; charset=utf-8', 'cache-control': 'private, no-store',
+      'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent('線上諮詢紀錄-' + month + '.csv')}`,
+    } });
+  }
+  const group = async (col: string) => (await c.env.DB.prepare(
+    `select coalesce(${col}, '未填') as k, count(*) as n from inquiries i where ${where} group by k order by n desc`,
+  ).bind(month).all()).results;
+  const total = await c.env.DB.prepare(
+    `select count(*) as n,
+            sum(case when status in ('replied','closed') then 1 else 0 end) as done,
+            avg(case when replied_at is not null then (julianday(replied_at) - julianday(created_at)) * 24 end) as avg_hours
+       from inquiries i where ${where}`,
+  ).bind(month).first();
+  return c.json({
+    month, total: total?.n || 0, done: total?.done || 0,
+    avgReplyHours: total?.avg_hours == null ? null : Math.round(Number(total.avg_hours) * 10) / 10,
+    byChannel: await group('channel'), byCategory: await group('category'), byTownship: await group('township'), byStatus: await group('status'),
+  });
 });
