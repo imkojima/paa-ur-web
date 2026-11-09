@@ -420,10 +420,10 @@
   };
   const QUICK = [
     { page: 'subsidy', icon: 'coins', tone: 'orange', label: '補助辦法', desc: '資格、項目與額度' },
-    { page: 'process', icon: 'steps', tone: 'blue', label: '申請流程', desc: '五個步驟看懂' },
-    { page: 'downloads', icon: 'download', tone: 'green', label: '申請表單下載', desc: '表單、簡報、摺頁' },
-    { page: 'faq', icon: 'help', tone: 'purple', label: '常見問答', desc: '先查常見問題' },
-    { page: 'consult', icon: 'chat', tone: 'teal', label: '線上諮詢', desc: '值班人員線上回覆' },
+    { page: 'process', icon: 'steps', tone: 'blue', label: '申請流程', desc: '申請步驟與時程' },
+    { page: 'downloads', icon: 'download', tone: 'green', label: '申請表單下載', desc: '應備文件一次下載' },
+    { page: 'faq', icon: 'help', tone: 'purple', label: '常見問答', desc: '申請前常見疑問' },
+    { page: 'consult', icon: 'chat', tone: 'teal', label: '線上諮詢', desc: '相關問題諮詢' },
   ];
   // 樣式：line＝線條＋淡色圓底｜solid＝實心圓底白圖示｜stack＝圖示在上、置中大按鈕｜color＝依入口分色
   const QUICK_STYLE = 'line';
