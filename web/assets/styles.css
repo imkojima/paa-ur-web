@@ -224,7 +224,7 @@ a.ur-artnav-item:hover strong{color:var(--accent);}
 .ur-block > h2{font-size:20px;margin:0 0 14px;padding-left:10px;border-left:4px solid var(--accent);}
 .ur-lead{font-size:17px;color:var(--body);margin:0 0 24px;}
 .ur-lead a,.ur-privacy a{color:var(--accent);text-decoration:underline;}
-.ur-callout{margin-top:40px;padding:20px 24px;background:var(--accent-soft);border-radius:var(--radius);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;}
+.ur-callout{margin:40px 0;padding:20px 24px;background:var(--accent-soft);border-radius:var(--radius);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;}
 .ur-callout p{margin:0;}
 .ur-callout-actions{display:flex;gap:10px;flex-wrap:wrap;}
 /* 申請流程步驟（頁面內文 <ol class="ur-steps">） */
