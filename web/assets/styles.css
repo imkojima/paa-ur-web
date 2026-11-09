@@ -157,6 +157,8 @@ a.ur-artnav-item:hover strong{color:var(--accent);}
 .ur-prose table{border-collapse:collapse;width:100%;margin:0 0 1.2em;font-size:15px;}
 .ur-prose th,.ur-prose td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top;}
 .ur-prose th{background:var(--soft);color:var(--ink);font-weight:500;}
+/* 左側列標題（tbody 第一欄 th，如「建築物」「4～6 層樓公寓」）：不斷行，欄寬依文字長度 */
+.ur-prose tbody th:first-child{white-space:nowrap;width:1%;}
 
 /* ── contact / sitemap ── */
 .ur-dl{display:grid;grid-template-columns:7em minmax(0,1fr);margin:0;}
@@ -316,6 +318,7 @@ a.ur-artnav-item:hover strong{color:var(--accent);}
   .ur-artnav-item:last-child{text-align:left;}
   .ur-dl{grid-template-columns:5.5em minmax(0,1fr);}
   .ur-prose table{display:block;overflow-x:auto;}
+  .ur-prose tbody th:first-child{white-space:normal;min-width:6em;}
   .ur-quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:20px;}
   .ur-quick-item{padding:12px;gap:10px;}
   .ur-quick-item:last-child:nth-child(odd){grid-column:1 / -1;}
