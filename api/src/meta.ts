@@ -69,7 +69,7 @@ function articleJsonLd(origin: string, path: string, row: any, img: string) {
 export async function resolveMeta(env: Env, url: URL): Promise<PageMeta> {
   const origin = url.origin;
   const path = url.pathname;
-  const defImg = origin + '/assets/og-cover-v2.png';
+  const defImg = origin + '/assets/og-cover-v3.jpg';
   const base: PageMeta = { title: SITE, description: SITE_DESC, image: defImg, type: 'website', canonical: origin + path, noindex: false };
   const make = (title: string, desc: string, extra: Partial<PageMeta> = {}): PageMeta => ({ ...base, title: full(title), description: clip(desc || SITE_DESC), ...extra });
 
