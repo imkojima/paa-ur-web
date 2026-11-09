@@ -654,7 +654,7 @@
     const container = h('div', null, PageHead('常見問答'));
     const host = h('div', { className: 'ur-wrap ur-narrow ur-page' });
     container.appendChild(host);
-    const input = h('input', { type: 'search', className: 'ur-search-input', placeholder: '輸入關鍵字，例如：電梯、透天、加碼', 'aria-label': '搜尋常見問答' });
+    const input = h('input', { type: 'search', className: 'ur-search-input', placeholder: '搜尋關鍵字', 'aria-label': '搜尋常見問答' });
     input.addEventListener('input', () => { query = input.value.trim().toLowerCase(); rebuild(); });
     const chipsSlot = h('div');
     const results = h('div');
