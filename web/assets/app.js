@@ -564,14 +564,6 @@
     const cats = uniqCats(data.items);
     let cat = findCat(cats, initialCat);
     const container = h('div', null, PageHead('資料下載'));
-    // 圖片檔（摺頁、海報）在網頁上直接看圖，點圖開原尺寸；下方檔案列表仍可下載
-    const gallery = (list) => {
-      const imgs = list.filter((f) => f.type === 'img' && f.url && !f.locked);
-      if (!imgs.length) return null;
-      return h('div', { className: 'ur-gallery' }, imgs.map((f) => h('a', { href: f.url, target: '_blank', rel: 'noopener noreferrer', className: 'ur-gallery-item' },
-        h('img', { src: f.url, alt: f.name, loading: 'lazy', decoding: 'async' }),
-        h('span', null, f.name))));
-    };
     const host = h('div', { className: 'ur-wrap ur-page' });
     container.appendChild(host);
 
@@ -580,7 +572,6 @@
       host.replaceChildren(...[
         cats.length > 1 ? h('div', { className: 'ur-toolbar' }, Chips(cats, cat, (c) => { cat = c; rebuild(); setUrl('downloads', cat ? cat.id : null, container); })) : null,
         h('p', { className: 'ur-resultnote' }, '共 ' + list.length + ' 筆'),
-        gallery(list),
         list.length ? fileList(list) : h('p', { className: 'ur-empty' }, '目前沒有檔案。'),
       ].filter(Boolean));
     }

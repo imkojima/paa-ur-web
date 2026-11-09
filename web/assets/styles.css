@@ -278,12 +278,6 @@ a.ur-artnav-item:hover strong{color:var(--accent);}
 .ur-done h3{margin:0 0 8px;color:var(--accent-dark);}
 .ur-done p{margin:0 0 4px;}
 
-/* ── 資料下載：圖片直接預覽（摺頁、海報）── */
-.ur-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin:12px 0 20px;}
-.ur-gallery-item{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:var(--radius);padding:10px;background:#fff;}
-.ur-gallery-item:hover{border-color:var(--accent);}
-.ur-gallery-item img{width:100%;aspect-ratio:3/4;object-fit:contain;background:var(--soft);border-radius:4px;}
-.ur-gallery-item span{font-size:14px;font-weight:500;}
 
 /* ── responsive ── */
 /* 主選單 7 項：1020px 以下改漢堡選單 */
