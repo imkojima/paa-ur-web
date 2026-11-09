@@ -37,6 +37,8 @@
   "env": {
     "dev": {
       "name": "paa-ur-dev",
+      // account_id 要在環境區塊內再寫一次：頂層的值 `wrangler d1 … --env dev` 讀不到（帳號下有多個 account 時會報錯）
+      "account_id": "6125a621bf5bbd92935a668b987b8c66",
       "vars": { "ENVIRONMENT": "dev" },
       // 公告預約發布：每 5 分鐘檢查一次到期的 scheduled 公告（見 index.ts 的 scheduled()）。
       "triggers": { "crons": ["*/5 * * * *"] },
@@ -58,6 +60,7 @@
 
     "prod": {
       "name": "paa-ur-prod",
+      "account_id": "6125a621bf5bbd92935a668b987b8c66",
       "vars": { "ENVIRONMENT": "prod" },
       "triggers": { "crons": ["*/5 * * * *"] },
       "d1_databases": [

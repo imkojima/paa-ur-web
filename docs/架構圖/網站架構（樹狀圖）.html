@@ -40,7 +40,7 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 40px 64px;
 }
-.wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
 h1 { font-family: var(--serif); font-size: clamp(24px, 3.6vw, 32px); line-height: 1.3; margin: 0; text-wrap: balance; }
 h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
 h2 small { font-size: 13px; font-weight: 400; color: var(--muted); }
@@ -63,7 +63,9 @@ section { display: flex; flex-direction: column; gap: 18px; }
 .kids li:last-child { background: var(--bg); }
 .kids li:last-child::after { content: ""; position: absolute; left: -2px; top: calc(50% + 1px); bottom: 0; width: 2px; background: var(--bg); }
 .node { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; }
+.kids .node { font-size: 14px; padding: 5px 10px; }
 .node.sec { border-style: dashed; color: var(--muted); font-size: 14px; }
+.top.off { background: var(--surface); color: var(--muted); border: 2px dashed var(--line); }
 .tag { font-size: 11px; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 0 7px; margin-left: 6px; white-space: nowrap; }
 
 .footer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-top: 4px; }
@@ -83,28 +85,64 @@ section { display: flex; flex-direction: column; gap: 18px; }
         <div class="top">首頁</div>
         <ul class="kids">
           <li><span class="node sec">輪播主視覺</span></li>
+          <li><span class="node sec">快速入口</span></li>
           <li><span class="node sec">最新公告</span></li>
-          <li><span class="node sec">計畫說明</span></li>
-          <li><span class="node sec">檔案下載</span></li>
+          <li><span class="node sec">首頁簡介</span></li>
+          <li><span class="node sec">資料下載</span></li>
           <li><span class="node sec">相關連結</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="top">計畫介紹</div>
+        <ul class="kids">
+          <li><span class="node">計畫說明</span></li>
+          <li><span class="node">補助辦法</span></li>
+          <li><span class="node">申請流程</span></li>
         </ul>
       </div>
       <div class="col">
         <div class="top">最新公告</div>
         <ul class="kids">
-          <li><span class="node">分類</span></li>
-          <li><span class="node">公告</span></li>
+          <li><span class="node">一般公告</span></li>
+          <li><span class="node">新聞稿</span></li>
+          <li><span class="node">活動訊息</span></li>
+          <li><span class="node">宣導資訊</span></li>
+          <li><span class="node">公告內頁</span></li>
         </ul>
       </div>
       <div class="col">
-        <div class="top">檔案下載</div>
+        <div class="top">資料下載</div>
         <ul class="kids">
-          <li><span class="node">分類</span></li>
-          <li><span class="node">檔案</span></li>
+          <li><span class="node">申請表單</span></li>
+          <li><span class="node">說明會簡報</span></li>
+          <li><span class="node">宣傳手冊／摺頁</span></li>
+          <li><span class="node">其他文件</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="top">常見問答</div>
+        <ul class="kids">
+          <li><span class="node">申請資格</span></li>
+          <li><span class="node">補助項目</span></li>
+          <li><span class="node">申請程序</span></li>
+          <li><span class="node">審查作業</span></li>
+          <li><span class="node">其他</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="top">線上諮詢</div>
+        <ul class="kids">
+          <li><span class="node">LINE 即時諮詢</span></li>
+          <li><span class="node">電話與 Email</span></li>
         </ul>
       </div>
       <div class="col">
         <div class="top">聯絡我們</div>
+        <ul class="kids">
+          <li><span class="node">聯絡窗口</span></li>
+          <li><span class="node">服務時間</span></li>
+          <li><span class="node">相關連結</span></li>
+        </ul>
       </div>
     </div>
     <div class="footer-row">
@@ -122,6 +160,22 @@ section { display: flex; flex-direction: column; gap: 18px; }
         <div class="top">公告</div>
         <ul class="kids">
           <li><span class="node">公告</span></li>
+          <li><span class="node">分類</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="top">頁面</div>
+        <ul class="kids">
+          <li><span class="node">計畫說明</span></li>
+          <li><span class="node">補助辦法</span></li>
+          <li><span class="node">申請流程</span></li>
+          <li><span class="node">聯絡窗口</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="top">常見問答</div>
+        <ul class="kids">
+          <li><span class="node">問答</span></li>
           <li><span class="node">分類</span></li>
         </ul>
       </div>
@@ -149,12 +203,14 @@ section { display: flex; flex-direction: column; gap: 18px; }
         <div class="top">輪播</div>
       </div>
       <div class="col">
-        <div class="top">計畫說明</div>
+        <div class="top">首頁簡介</div>
       </div>
       <div class="col">
         <div class="top">設定</div>
         <ul class="kids">
           <li><span class="node">聯絡資訊</span></li>
+          <li><span class="node">服務時間</span></li>
+          <li><span class="node">LINE／值班時段</span></li>
         </ul>
       </div>
       <div class="col">
@@ -169,11 +225,17 @@ section { display: flex; flex-direction: column; gap: 18px; }
           <li><span class="node">紀錄查詢<span class="tag">最高管理員</span></span></li>
         </ul>
       </div>
+      <div class="col">
+        <div class="top off">線上諮詢收件匣</div>
+        <ul class="kids">
+          <li><span class="node sec">收件匣、月報匯出<span class="tag">停用中</span></span></li>
+        </ul>
+      </div>
     </div>
   </section>
 
   <div class="legend">
-    <span><i></i>首頁上的區塊（不是獨立頁面）</span>
+    <span><i></i>首頁上的區塊（不是獨立頁面）；後台虛線框＝已開發但目前停用</span>
   </div>
 </div>
 

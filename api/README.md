@@ -5,7 +5,7 @@
 
 ## 環境與資源
 
-Cloudflare 帳號：**PAA 澎湖縣建築師公會**（`account_id` 已寫在 `wrangler.jsonc`）。
+Cloudflare 帳號：**PAA 澎湖縣建築師公會**（`account_id` 寫在 `wrangler.jsonc` 的每個環境區塊；頂層的值 `wrangler d1 … --env` 讀不到）。
 
 | | dev | prod |
 |---|---|---|
@@ -51,18 +51,33 @@ npm run backup:verify:prod
 ```
 api/
 ├─ src/
-│  ├─ index.ts          # Hono 進入點：公開 API、SPA fallback、邊緣 meta 注入、安全標頭、sitemap/robots、cron
-│  ├─ admin.ts          # 後台 API（公告/附件/檔案/法律頁面/友站/輪播/設定與計畫說明/管理者/稽核紀錄）
+│  ├─ index.ts          # Hono 進入點：公開 API（含 /api/pages、/api/faqs、/api/inquiries）、SPA fallback、邊緣 meta 注入、安全標頭、sitemap/robots、cron
+│  ├─ admin.ts          # 後台 API（公告/附件/檔案/頁面/常見問答/諮詢收件匣/法律頁面/友站/輪播/設定/管理者/稽核紀錄）
 │  ├─ auth.ts           # PBKDF2、session store、速率限制、Turnstile 驗證
 │  ├─ platform.ts       # Workers 平台相依的唯一集中處
 │  └─ meta.ts           # 每頁 title／社群分享 meta
-├─ migrations/          # D1 schema：0001_init（自 paa-web 合併精簡）、0002_home_intro（首頁計畫說明預設內容）
+├─ migrations/          # D1 schema：0001_init（自 paa-web 合併精簡）、0002_home_intro（首頁簡介預設內容）、
+│                       #   0003_county_revision（縣府退件修正：頁面、常見問答、諮詢、分類、consult 設定）
 ├─ seeds/               # demo-data.js（虛構示範資料）+ gen 出的 0001_content.sql
 ├─ scripts/             # gen-seed / hash-password / backup / verify-backup
 └─ wrangler.jsonc
 ```
 
-`migrations/0001_init.sql` 另有 `pages`、`menu_items` 兩張表，供下一階段的「頁面管理」使用，目前尚未接上 API。
+`pages` 表已接上「頁面管理」：slug 固定為 `plan`／`subsidy`／`process`／`contact`，與前台路由一對一，後台只能編修。
+`menu_items` 表仍未使用（主選單寫在 `web/assets/app.js` 的 `NAV`）。
+
+### 0003 帶入的資料表與設定
+
+| 項目 | 說明 |
+|---|---|
+| `faq_categories`／`faqs` | 常見問答（五類、26 題初稿），`answer` 為 HTML |
+| `inquiries` | 線上諮詢案件（網站表單、LINE、電話）。**目前停用**：`index.ts` 的 `INQUIRY_FORM_ENABLED=false`，公開 POST 回 404，後台不顯示收件匣 |
+| `settings.consult` | `line_url`、`line_id`、`hours`（值班時段）、`reply_sla`、`notify_email`（通知信箱，功能未實作） |
+| `settings.contact.hours` | 服務時間 |
+
+所有種子資料只在尚無資料時寫入；`contact` 只有在地址空白時才帶入公會資料（dev 因已有 seed 示範資料，未被覆蓋）。
+
+> D1 的 migration 不接受太長的 `UNION ALL`（SQLITE 的 compound SELECT 上限），大量種子資料請逐筆 `INSERT`。
 
 ## 平台相依（`platform.ts`）
 

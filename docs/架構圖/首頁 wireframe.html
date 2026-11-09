@@ -28,8 +28,19 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
       </div>
       <nav aria-label="主選單" style="display: flex; flex-wrap: wrap; gap: 4px">
         <a href="#" style="padding: 20px 14px; color: #1d5d73; font-weight: 500; border-bottom: 2px solid #1d5d73">首頁</a>
+        <span style="position: relative; display: inline-flex">
+          <a href="#" style="padding: 20px 14px">計畫介紹 ▾</a>
+          <span style="position: absolute; top: 58px; left: 0; z-index: 2; background: #ffffff; border: 1px solid #cfd4d8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.08); padding: 6px 0; display: flex; flex-direction: column; min-width: 120px; font-size: 14px">
+            <span style="padding: 6px 14px">計畫說明</span>
+            <span style="padding: 6px 14px">補助辦法</span>
+            <span style="padding: 6px 14px">申請流程</span>
+            <span style="padding: 4px 14px 2px; font-size: 11px; color: #5d666c; border-top: 1px dashed #cfd4d8; margin-top: 4px">滑鼠移入展開</span>
+          </span>
+        </span>
         <a href="#" style="padding: 20px 14px">最新公告</a>
-        <a href="#" style="padding: 20px 14px">檔案下載</a>
+        <a href="#" style="padding: 20px 14px">資料下載</a>
+        <a href="#" style="padding: 20px 14px">常見問答</a>
+        <a href="#" style="padding: 20px 14px">線上諮詢</a>
         <a href="#" style="padding: 20px 14px">聯絡我們</a>
       </nav>
     </div>
@@ -52,6 +63,18 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
     <div style="display: inline-flex; position: absolute; top: 12px; right: 16px; flex-direction: column; align-items: flex-end; gap: 6px">
       <span style="font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 輪播</span>
       <span style="font-size: 12px; background: #ffffff; color: #2b3236; border: 1px solid #cfd4d8; padding: 1px 8px; border-radius: 6px; max-width: 220px">多張時每 6 秒輪播，滑鼠移入暫停；沒有圖片時改顯示文字版（眉標、標題、說明、按鈕）</span>
+    </div>
+  </section>
+
+  <!-- 快速入口 -->
+  <section aria-label="快速入口" style="max-width: 1120px; width: 100%; box-sizing: border-box; margin: 28px auto 0; padding: 0 24px; display: flex; flex-direction: column; gap: 8px">
+    <span style="display: inline-flex; align-self: flex-start; font-size: 12px; background: #ffffff; border: 1px solid #cfd4d8; padding: 1px 8px; border-radius: 6px">快速入口｜固定五項，寫在程式內（圓框＝線條圖示）；寬度不足時改三欄、手機兩欄</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 44px; height: 44px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 16px">補助辦法</strong><span style="font-size: 13px; color: #5d666c">資格、項目與額度</span></span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 44px; height: 44px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 16px">申請流程</strong><span style="font-size: 13px; color: #5d666c">申請步驟與時程</span></span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 44px; height: 44px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 16px">申請表單下載</strong><span style="font-size: 13px; color: #5d666c">應備文件一次下載</span></span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 44px; height: 44px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 16px">常見問答</strong><span style="font-size: 13px; color: #5d666c">申請前常見疑問</span></span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 44px; height: 44px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 16px">線上諮詢</strong><span style="font-size: 13px; color: #5d666c">相關問題諮詢</span></span></a>
     </div>
   </section>
 
@@ -107,7 +130,7 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
       <section style="display: flex; flex-direction: column; gap: 14px">
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid #2b3236; padding-bottom: 8px">
           <h2 style="margin: 0; font-size: 22px">老宅延壽機能復新計畫</h2>
-          <span style="display: inline-flex; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 計畫說明｜富文本，未填則整區不顯示</span>
+          <span style="display: inline-flex; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 首頁簡介｜富文本，未填則整區不顯示</span>
         </div>
         <h3 style="margin: 8px 0 0; font-size: 17px">一、計畫緣起</h3>
         <div style="display: flex; flex-direction: column; gap: 10px">
@@ -132,7 +155,7 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
     <aside style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 40px; min-width: 0">
       <section style="display: flex; flex-direction: column; gap: 10px">
         <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 2px solid #2b3236; padding-bottom: 8px">
-          <h2 style="margin: 0; font-size: 20px">檔案下載</h2>
+          <h2 style="margin: 0; font-size: 20px">資料下載</h2>
           <a href="#" style="font-size: 14px; color: #1d5d73">全部 →</a>
         </div>
         <span style="display: inline-flex; align-self: flex-start; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 檔案｜列出分類與檔案數</span>
@@ -194,7 +217,7 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
     </button>
   </header>
   <div style="display: inline-flex; padding: 8px 16px 0; flex-direction: column; gap: 4px">
-    <span style="align-self: flex-start; font-size: 12px; background: #ffffff; border: 1px solid #cfd4d8; padding: 1px 8px; border-radius: 6px">點漢堡鈕展開：首頁／最新公告／檔案下載／聯絡我們（上下排列）</span>
+    <span style="align-self: flex-start; font-size: 12px; background: #ffffff; border: 1px solid #cfd4d8; padding: 1px 8px; border-radius: 6px; line-height: 1.5">點漢堡鈕展開：首頁／計畫介紹（計畫說明、補助辦法、申請流程）／最新公告／資料下載／常見問答／線上諮詢／聯絡我們（上下排列）</span>
   </div>
 
   <!-- 主視覺：滿版寬度 -->
@@ -214,7 +237,16 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
     <span style="display: inline-flex; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 輪播</span>
   </section>
 
-  <!-- 單欄內容：公告 → 計畫說明 → 檔案下載 → 相關連結 -->
+  <!-- 快速入口：兩欄，第五項滿版 -->
+  <section aria-label="快速入口" style="padding: 20px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 38px; height: 38px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 15px">補助辦法</strong><span style="font-size: 13px; color: #5d666c">資格、項目與額度</span></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 38px; height: 38px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 15px">申請流程</strong><span style="font-size: 13px; color: #5d666c">申請步驟與時程</span></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 38px; height: 38px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 15px">申請表單下載</strong><span style="font-size: 13px; color: #5d666c">應備文件一次下載</span></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff"><span style="flex: none; width: 38px; height: 38px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 15px">常見問答</strong><span style="font-size: 13px; color: #5d666c">申請前常見疑問</span></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfd4d8; border-radius: 8px; background: #ffffff; grid-column: 1 / -1"><span style="flex: none; width: 38px; height: 38px; border-radius: 50%; background: #e3ecef; border: 1px dashed #1d5d73; box-sizing: border-box"></span><span style="display: flex; flex-direction: column; min-width: 0; line-height: 1.4"><strong style="font-size: 15px">線上諮詢</strong><span style="font-size: 13px; color: #5d666c">相關問題諮詢</span></span></a>
+  </section>
+
+  <!-- 單欄內容：公告 → 首頁簡介 → 資料下載 → 相關連結 -->
   <div style="padding: 36px 16px 56px; display: flex; flex-direction: column; gap: 44px">
 
     <section style="display: flex; flex-direction: column; gap: 10px">
@@ -255,7 +287,7 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
       <div style="border-bottom: 2px solid #2b3236; padding-bottom: 8px">
         <h2 style="margin: 0; font-size: 20px">老宅延壽機能復新計畫</h2>
       </div>
-      <span style="display: inline-flex; align-self: flex-start; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 計畫說明</span>
+      <span style="display: inline-flex; align-self: flex-start; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 首頁簡介</span>
       <h3 style="margin: 4px 0 0; font-size: 16px">一、計畫緣起</h3>
       <div style="display: flex; flex-direction: column; gap: 9px">
         <span style="height: 10px; background: #dde1e4; border-radius: 5px"></span>
@@ -276,7 +308,7 @@ a{color:#2b3236;text-decoration:none}a:hover{color:#1d5d73}
 
     <section style="display: flex; flex-direction: column; gap: 10px">
       <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 2px solid #2b3236; padding-bottom: 8px">
-        <h2 style="margin: 0; font-size: 20px">檔案下載</h2>
+        <h2 style="margin: 0; font-size: 20px">資料下載</h2>
         <a href="#" style="font-size: 14px; color: #1d5d73">全部 →</a>
       </div>
       <span style="display: inline-flex; align-self: flex-start; font-size: 12px; background: #1d5d73; color: #ffffff; padding: 1px 8px; border-radius: 999px">後台 › 檔案</span>
