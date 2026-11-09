@@ -767,7 +767,7 @@
     return h('div', null,
       PageHead('線上諮詢'),
       h('div', { className: 'ur-wrap ur-narrow ur-page' },
-        h('p', { className: 'ur-lead' }, '本計畫設有網路值班人員，提供線上即時諮詢服務。提問前，建議先查閱',
+        h('p', { className: 'ur-lead' }, '提問前，建議先查閱',
           link('faq', null, null, '常見問答'), '，許多問題可以立即找到答案。'),
         h('div', { className: 'ur-channels' },
           h('section', { className: 'ur-channel' },
