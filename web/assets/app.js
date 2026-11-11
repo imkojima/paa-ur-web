@@ -37,7 +37,7 @@
   }
 
   // 測試站標註：抓 /api/config 的 env（後端 c.env.ENVIRONMENT 為準，見 index.ts），
-  // 非 prod 時在頁首會名與瀏覽器標題加註「（測試）」。Header()/applyMeta() 不是 reactive
+  // 非 prod 時在瀏覽器標題加註「（測試）」並在頁首上方顯示測試站橫幅（頁首站名不加註）。Header()/applyMeta() 不是 reactive
   // 的，資料晚到不會自動補畫，所以必須在第一次 applyRoute() 之前就把值準備好（見檔尾）。
   let siteEnv = 'prod';
   const testTag = () => (siteEnv === 'prod' ? '' : '（測試）');
@@ -195,7 +195,7 @@
       h('span'), h('span'), h('span'));
     const header = h('header', { className: 'ur-header' },
       h('div', { className: 'ur-wrap ur-header-inner' },
-        link('home', null, { className: 'ur-brand' }, SITE_NAME + testTag()),
+        link('home', null, { className: 'ur-brand' }, SITE_NAME),
         toggle,
         h('nav', { className: 'ur-nav', 'aria-label': '主選單' },
           NAV.map((n) => {
