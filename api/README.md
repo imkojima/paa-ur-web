@@ -57,7 +57,8 @@ api/
 │  ├─ platform.ts       # Workers 平台相依的唯一集中處
 │  └─ meta.ts           # 每頁 title／社群分享 meta
 ├─ migrations/          # D1 schema：0001_init（自 paa-web 合併精簡）、0002_home_intro（首頁簡介預設內容）、
-│                       #   0003_county_revision（縣府退件修正：頁面、常見問答、諮詢、分類、consult 設定）
+│                       #   0003_county_revision（縣府退件修正：頁面、常見問答、諮詢、分類、consult 設定）、
+│                       #   0004_brochure_sync（依正式版摺頁校正頁面與問答文字）
 ├─ seeds/               # demo-data.js（虛構示範資料）+ gen 出的 0001_content.sql
 ├─ scripts/             # gen-seed / hash-password / backup / verify-backup
 └─ wrangler.jsonc
