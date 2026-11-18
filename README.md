@@ -37,11 +37,11 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**。
 | 環境 | 狀態 | 網址 |
 |---|---|---|
 | dev | 已部署（2026-11-06） | https://dev.paa.org.tw/expand-life/（後台 `/expand-life/admin/`）；workers.dev 也可用 |
-| prod | 資源尚未建立 | https://www.paa.org.tw/expand-life/ |
+| prod | 已部署（2026-11-18），上線前閘門開啟中、正式內容待建立 | https://www.paa.org.tw/expand-life/ |
 
 ```bash
 npm run deploy:dev    # build(prod) + 部署 paa-ur-dev
-npm run deploy:prod   # build(prod) + 部署 paa-ur-prod（需先建立 prod 資源）
+npm run deploy:prod   # build(prod) + 部署 paa-ur-prod
 ```
 
 - 改了 schema（新增 `api/migrations/000N_*.sql`）要先 `cd api && npm run db:migrate:dev`，再部署。

@@ -10,12 +10,12 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**（`account_id` 寫在 `wran
 | | dev | prod |
 |---|---|---|
 | Worker | `paa-ur-dev` | `paa-ur-prod` |
-| 網址 | https://dev.paa.org.tw/expand-life/ | https://www.paa.org.tw/expand-life/（未部署） |
-| D1 | `paa-ur-db-dev`（`11dc589a-8d24-4f2b-8ca8-0b27f163ae27`） | `paa-ur-db`（待建立） |
-| KV | `paa-ur-kv-dev`（`bea72eaec51d4835a7f5dfe692424d6b`） | `paa-ur-kv-prod`（待建立） |
-| R2 | `paa-ur-files-dev` | `paa-ur-files`（待建立） |
+| 網址 | https://dev.paa.org.tw/expand-life/ | https://www.paa.org.tw/expand-life/ |
+| D1 | `paa-ur-db-dev`（`11dc589a-8d24-4f2b-8ca8-0b27f163ae27`） | `paa-ur-db`（`4f3de19f-b36a-4082-ac64-168ca64ae127`） |
+| KV | `paa-ur-kv-dev`（`bea72eaec51d4835a7f5dfe692424d6b`） | `paa-ur-kv-prod`（`435783839c664e0f963c859c49e26739`） |
+| R2 | `paa-ur-files-dev` | `paa-ur-files` |
 
-dev 已建立並部署（2026-11-06）。prod 的 D1／KV id 仍是全 0 佔位值，建立步驟見 `../docs/上線部署手冊.md`。
+dev 已建立並部署（2026-11-06）。prod 已建立並部署（2026-11-18），目前開著上線前閘門（Basic Auth），步驟見 `../docs/上線部署手冊.md`。
 
 > ⚠️ 本機 D1 的資料檔是依 `database_id` 對應的。改了 `wrangler.jsonc` 裡 dev 的 `database_id`，
 > `--local` 就會指到一個新的空資料庫（舊資料仍在 `.wrangler/state/v3/d1/` 底下，只是不再被讀到）。
@@ -33,7 +33,7 @@ npm run db:migrate:dev:local   # 首次：套用 schema
 npm run seed:dev:local         # 首次：灌 demo 資料（seeds/0001_content.sql）
 npm run dev
 
-# 部署（prod 需先建立資源）
+# 部署
 npm run deploy:dev
 npm run deploy:prod
 

@@ -3,9 +3,7 @@
   // 兩套環境：dev / prod，各自獨立的 Worker 名稱、D1、KV、R2。
   // 部署一律帶環境：`wrangler deploy --env dev` 或 `--env prod`。
   //
-  // 帳號：PAA 澎湖縣建築師公會。dev 資源已建立（2026-11-06）。
-  // prod 尚未建立：下方 prod 的 database_id / KV id 仍為佔位值。上線前需
-  //   `wrangler d1 create paa-ur-db`、`wrangler kv namespace create paa-ur-kv-prod`、`wrangler r2 bucket create paa-ur-files` 後填回實際 id。
+  // 帳號：PAA 澎湖縣建築師公會。dev 資源已建立（2026-11-06），prod 資源已建立（2026-11-18）。
   //
   // 網址：本站掛在公會網站的子路徑 /expand-life（見 src/base.ts）。
   //   prod → https://www.paa.org.tw/expand-life/   dev → https://dev.paa.org.tw/expand-life/
@@ -84,12 +82,12 @@
         {
           "binding": "DB",
           "database_name": "paa-ur-db",
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "4f3de19f-b36a-4082-ac64-168ca64ae127",
           "migrations_dir": "migrations"
         }
       ],
       "kv_namespaces": [
-        { "binding": "KV", "id": "00000000000000000000000000000000" }
+        { "binding": "KV", "id": "435783839c664e0f963c859c49e26739" }  // paa-ur-kv-prod
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "paa-ur-files" }
