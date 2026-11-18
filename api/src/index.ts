@@ -6,8 +6,12 @@ import { rlCheck, rlBump, verifyTurnstile } from './auth';
 import { BASE } from './base';
 
 // Turnstile Site Key（公開值；前端用）。Secret 為 Worker 機密 TURNSTILE_SECRET。
-// 上線前需為本站網域另申請一組 key（paa-web 那組綁在 paa.org.tw）；未設 secret 時登入不驗證。
-const TURNSTILE_SITE_KEY = '';
+// 與公會網站（paa-web）共用同一個 widget：Turnstile 只比對 hostname 不看路徑，本站掛在
+// www.paa.org.tw／dev.paa.org.tw 的 /expand-life 底下，已在該 widget 的 Hostnames 內
+// （workers.dev 網址不在其中，啟用後無法從 workers.dev 登入後台）。
+// 兩站的 TURNSTILE_SECRET 是同一個值：在 Cloudflare 輪替 secret 時兩邊都要更新。
+// 未設 secret 時登入不驗證，/api/config 也不回傳 site key。
+const TURNSTILE_SITE_KEY = '0x4AAAAAAEGW74s5dbB7sE79';
 
 // 網站線上提問表單＋後台諮詢收件匣：暫停（2026-11-09 使用者指示，諮詢可能不在本後台處理）。
 // 關閉時 POST /api/inquiries 回 404、前台線上諮詢頁不顯示表單（見 /api/config 的 inquiryForm），

@@ -98,7 +98,7 @@ dist/                 # build 產物；git 忽略
 
 - **後台權限**：superadmin／editor／viewer 三級；PBKDF2 密碼雜湊 + KV session（HttpOnly/Secure、`SameSite=Strict`），
   閒置 60 分＋絕對上限 12 小時，`token_version` 可撤銷。
-- **防護**：登入有 KV 速率限制與 Turnstile（未設 `TURNSTILE_SECRET` 時略過；site key 需另申請）；上傳有副檔名白名單與 15MB 上限。
+- **防護**：登入有 KV 速率限制與 Turnstile（與公會網站共用同一個 widget；未設 `TURNSTILE_SECRET` 時略過）；上傳有副檔名白名單與 15MB 上限。
 - **上線前閘門**：prod 設了 `BASIC_AUTH_USER`／`BASIC_AUTH_PASS` 兩個 secret 時，全站要求 Basic Auth；刪掉 secret 即解除。dev 不受影響。
 - **dev 不被收錄**：非 prod 環境全站回 `X-Robots-Tag: noindex, nofollow`。根目錄的 robots.txt 屬於公會網站（paa-web），正式站的 sitemap 由它宣告。
 - **安全標頭**：CSP 目前 Report-Only。標頭同時由 `api/src/index.ts` 與 `build.mjs`→`dist/_headers` 設定，**兩處需同步**。
