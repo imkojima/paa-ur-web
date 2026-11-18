@@ -1,6 +1,7 @@
 // 認證：PBKDF2 密碼雜湊 + KV session + cookie 工具（後台管理者）。
 // 同一套 PBKDF2 參數也用於 scripts/hash-password.mjs（建立管理者帳號）。
 import type { Context } from 'hono';
+import { BASE } from './base';
 
 const enc = new TextEncoder();
 const PBKDF2_ITER = 100000;
@@ -54,6 +55,10 @@ export function getCookie(c: Context, name: string): string | null {
   const m = (c.req.header('Cookie') || '').match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
   return m ? decodeURIComponent(m[1]) : null;
 }
+
+// 後台 cookie 只送往本站的後台 API（/expand-life/api/admin/…）：與公會網站（paa-web）同網域，
+// 不讓 cookie 隨著公會網站或本站前台的請求送出。
+const COOKIE_PATH = BASE + '/api/admin';
 
 // ── 伺服器端 session（KV）─────────────────────────────────────
 //
@@ -127,9 +132,9 @@ function createSessionStore<T extends SessionBase>(opts: {
     },
     readToken: (c) => getCookie(c, cookie),
     setCookie: (c, t) => c.header('Set-Cookie',
-      `${cookie}=${t}; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=${idleTtl}`, { append: true }),
+      `${cookie}=${t}; HttpOnly; Secure; SameSite=${sameSite}; Path=${COOKIE_PATH}; Max-Age=${idleTtl}`, { append: true }),
     clearCookie: (c) => c.header('Set-Cookie',
-      `${cookie}=; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=0`, { append: true }),
+      `${cookie}=; HttpOnly; Secure; SameSite=${sameSite}; Path=${COOKIE_PATH}; Max-Age=0`, { append: true }),
   };
 }
 

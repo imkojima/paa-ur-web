@@ -24,9 +24,27 @@
     return e;
   }
 
-  // ── API client (same-origin /api/*) ──────────────────────────────────────
+  // ── 網址前綴 ─────────────────────────────────────────────────────────────
+  // 本站掛在公會網站子路徑 /expand-life（見 api/src/base.ts，改動需同步）。
+  // 程式內部與資料庫一律用「站內根相對」路徑（/news、/files/x、/api/home），
+  // 送到瀏覽器（href、src、fetch、pushState）前才用 u() 補前綴。
+  const BASE = '/expand-life';
+  function u(path) {
+    const p = String(path == null ? '' : path);
+    if (!p.startsWith('/') || p.startsWith('//')) return p;
+    if (p === BASE || p.startsWith(BASE + '/')) return p;
+    return BASE + p;
+  }
+  // 瀏覽器路徑 → 站內路徑（/expand-life/news → /news）
+  function stripBase(path) {
+    const p = String(path || '/');
+    if (p === BASE) return '/';
+    return p.startsWith(BASE + '/') ? p.slice(BASE.length) : p;
+  }
+
+  // ── API client (same-origin /expand-life/api/*) ──────────────────────────
   async function api(path) {
-    const r = await fetch(path, { headers: { accept: 'application/json' } });
+    const r = await fetch(u(path), { headers: { accept: 'application/json' } });
     if (!r.ok) throw new Error('API ' + r.status + ' ' + path);
     return r.json();
   }
@@ -129,18 +147,19 @@
   }
 
   // ── 路徑式路由（History API）─────────────────────────────────────────────
-  // 內部仍以 {page, arg} 表示；序列化規則：
+  // 內部仍以 {page, arg} 表示；序列化規則（皆在 BASE 底下）：
   //   home→/  news→/news（分類用 ?category=）  article→/news/<id>
   //   downloads→/downloads（分類用 ?category=）  其餘→/<page>
+  // routeToPath 回傳含前綴的瀏覽器路徑（/expand-life/news），可直接用於 href 與 pushState。
   function routeToPath(r) {
-    if (!r || !r.page || r.page === 'home') return '/';
-    if (r.page === 'article') return '/news/' + encodeURIComponent(r.arg);
-    if (r.page === 'news') return r.arg ? '/news?category=' + encodeURIComponent(r.arg) : '/news';
-    if (r.page === 'downloads') return r.arg ? '/downloads?category=' + encodeURIComponent(r.arg) : '/downloads';
-    return '/' + r.page;
+    if (!r || !r.page || r.page === 'home') return u('/');
+    if (r.page === 'article') return u('/news/' + encodeURIComponent(r.arg));
+    if (r.page === 'news') return u(r.arg ? '/news?category=' + encodeURIComponent(r.arg) : '/news');
+    if (r.page === 'downloads') return u(r.arg ? '/downloads?category=' + encodeURIComponent(r.arg) : '/downloads');
+    return u('/' + r.page);
   }
   function pathToRoute(loc) {
-    const segs = (loc.pathname || '/').replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+    const segs = stripBase(loc.pathname).replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
     const params = new URLSearchParams(loc.search || '');
     if (segs.length === 0) return { page: 'home', arg: null };
     const a = decodeURIComponent(segs[0]);
@@ -312,6 +331,17 @@
         if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name);
       });
     });
+    // 後台內文存的是站內根相對網址（<a href="/subsidy">、<img src="/files/x">），補上前綴；
+    // 站內頁面連結改走前端路由（data-link），不整頁重新載入。
+    t.querySelectorAll('a[href], img[src]').forEach((el) => {
+      const attr = el.tagName === 'A' ? 'href' : 'src';
+      const v = el.getAttribute(attr);
+      const nv = u(v);
+      if (nv !== v) el.setAttribute(attr, nv);
+      if (attr === 'href' && nv.startsWith(BASE + '/') && !el.hasAttribute('target') && !/^\/(files|api)\//.test(stripBase(nv))) {
+        el.setAttribute('data-link', '1');
+      }
+    });
     t.querySelectorAll('img').forEach((im) => { im.setAttribute('loading', 'lazy'); im.setAttribute('decoding', 'async'); });
     return t.innerHTML;
   }
@@ -404,7 +434,7 @@
   }
 
   const heroShape = (s) => ({
-    bg: s.background_image, eyebrow: s.eyebrow, title: s.title, desc: s.description,
+    bg: s.background_image ? u(s.background_image) : s.background_image, // /files/hero/x → 補前綴；舊種子的 assets/x 靠 <base href> 解析 eyebrow: s.eyebrow, title: s.title, desc: s.description,
     buttons: (s.buttons || []).map((b) => ({ label: b.label, page: b.target_page, arg: b.target_arg, url: b.url, primary: b.is_primary })),
   });
 
@@ -530,7 +560,7 @@
     const body = (item.body && item.body.length) ? item.body : (item.excerpt ? [{ p: item.excerpt }] : []);
     const files = (item.files || []).map((f) => ({
       name: f.name, size: fmtBytes(f.size_bytes), type: f.type, date: isoToRoc(f.file_date),
-      url: f.file_path ? '/files/' + f.file_path : null,
+      url: f.file_path ? u('/files/' + f.file_path) : null,
       locked: f.access === 'member',
     }));
     const d = isoToRoc(item.publish_date).split('.');
@@ -558,7 +588,7 @@
     const data = await store.downloads();
     const files = data.items.map((f) => ({
       name: f.name, catId: f.category_id, size: fmtBytes(f.size_bytes), type: f.type,
-      url: f.file_path ? '/files/' + f.file_path : null,
+      url: f.file_path ? u('/files/' + f.file_path) : null,
       locked: f.access === 'member',
     }));
     const cats = uniqCats(data.items);
@@ -721,7 +751,7 @@
       if (!f.agree.checked) { msg.textContent = '請勾選同意個人資料蒐集告知事項。'; f.agree.focus(); return; }
       submit.disabled = true; msg.className = 'ur-formmsg'; msg.textContent = '送出中…';
       try {
-        const r = await fetch('/api/inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+        const r = await fetch(u('/api/inquiries'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
           name: f.name.value, phone: f.phone.value, email: f.email.value, township: f.township.value,
           building_type: f.building.value, category: f.category.value, content: f.content.value,
           agree: f.agree.checked, website: f.website.value,
@@ -883,7 +913,7 @@
     const a = e.target.closest && e.target.closest('a[data-link]');
     if (!a) return;
     const href = a.getAttribute('href') || '';
-    if (!href.startsWith('/')) return;
+    if (!href.startsWith(BASE + '/')) return; // 不在本站範圍（含公會網站其他頁面）→ 交給瀏覽器
     e.preventDefault();
     if (href === location.pathname + location.search) { applyRoute(); return; }
     history.pushState({}, '', href);

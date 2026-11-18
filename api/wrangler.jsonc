@@ -4,9 +4,15 @@
   // 部署一律帶環境：`wrangler deploy --env dev` 或 `--env prod`。
   //
   // 帳號：PAA 澎湖縣建築師公會。dev 資源已建立（2026-11-06）。
-  // prod 尚未建立：下方 prod 的 database_id / KV id 仍為佔位值。上線前需：
-  //   1. `wrangler d1 create paa-ur-db`、`wrangler kv namespace create paa-ur-kv-prod`、`wrangler r2 bucket create paa-ur-files` 後填回實際 id
-  //   2. 決定網域後補上 routes
+  // prod 尚未建立：下方 prod 的 database_id / KV id 仍為佔位值。上線前需
+  //   `wrangler d1 create paa-ur-db`、`wrangler kv namespace create paa-ur-kv-prod`、`wrangler r2 bucket create paa-ur-files` 後填回實際 id。
+  //
+  // 網址：本站掛在公會網站的子路徑 /expand-life（見 src/base.ts）。
+  //   prod → https://www.paa.org.tw/expand-life/   dev → https://dev.paa.org.tw/expand-life/
+  // www／dev.paa.org.tw 是 paa-web 的 Custom Domain；本 Worker 以 Route 疊在前面，
+  // Cloudflare 對同一 hostname 會先執行 Route 上的 Worker，Custom Domain 的 Worker 視為 origin。
+  // route pattern 只能以 * 結尾，`/expand-life*` 也會比對到 /expand-lifestyle 之類，
+  // 這些由 src/index.ts 檔尾的 fetch() 原樣交回 paa-web。
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "paa-ur",
   // PAA 澎湖縣建築師公會帳號
@@ -28,7 +34,8 @@
       "head_sampling_rate": 1
     }
   },
-  // 前台靜態資產：服務 build 產物 dist/（由根目錄 `npm run build` 從 web/ 產生）。
+  // 前台靜態資產：服務 build 產物 dist/（由根目錄 `npm run build` 從 web/ 產生，檔案放在 dist/expand-life/ 底下，
+  // 資產層看到的路徑就是瀏覽器的實際路徑）。
   // 全部路徑一律先過 Worker（run_worker_first: true）再回退資產層：
   // 一是讓 dev 環境的動態 noindex 標頭（見 index.ts）能蓋到「/」首頁；
   // 二是讓 prod 上線前的 Basic Auth 閘門（見 index.ts）也能蓋到靜態檔，不會被資產層繞過 Worker 而漏擋。
@@ -37,6 +44,11 @@
   "env": {
     "dev": {
       "name": "paa-ur-dev",
+      "routes": [
+        { "pattern": "dev.paa.org.tw/expand-life*", "zone_name": "paa.org.tw" }
+      ],
+      // 有 routes 時 workers.dev 預設關閉；dev 保留，方便不經公會網站直接測試（根目錄會導向 /expand-life/）
+      "workers_dev": true,
       // account_id 要在環境區塊內再寫一次：頂層的值 `wrangler d1 … --env dev` 讀不到（帳號下有多個 account 時會報錯）
       "account_id": "6125a621bf5bbd92935a668b987b8c66",
       "vars": { "ENVIRONMENT": "dev" },
@@ -60,6 +72,11 @@
 
     "prod": {
       "name": "paa-ur-prod",
+      "routes": [
+        { "pattern": "www.paa.org.tw/expand-life*", "zone_name": "paa.org.tw" }
+      ],
+      // 正式站只走 www.paa.org.tw/expand-life，不開 workers.dev
+      "workers_dev": false,
       "account_id": "6125a621bf5bbd92935a668b987b8c66",
       "vars": { "ENVIRONMENT": "prod" },
       "triggers": { "crons": ["*/5 * * * *"] },

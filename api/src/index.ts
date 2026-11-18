@@ -3,6 +3,7 @@ import { admin } from './admin';
 import { resolveMeta, injectMeta } from './meta';
 import { background, edgeCache, clientIp } from './platform';
 import { rlCheck, rlBump, verifyTurnstile } from './auth';
+import { BASE } from './base';
 
 // Turnstile Site Key（公開值；前端用）。Secret 為 Worker 機密 TURNSTILE_SECRET。
 // 上線前需為本站網域另申請一組 key（paa-web 那組綁在 paa.org.tw）；未設 secret 時登入不驗證。
@@ -24,7 +25,8 @@ type Bindings = {
   BASIC_AUTH_PASS?: string;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+// 所有路由都掛在 BASE（/expand-life）底下；不屬於 BASE 的請求由檔尾的 fetch() 先行分流。
+const app = new Hono<{ Bindings: Bindings }>().basePath(BASE);
 
 function timingSafeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -76,7 +78,7 @@ const CSP =
   "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
   "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; " +
   "connect-src 'self' https://cloudflareinsights.com; frame-src 'self' blob: https://challenges.cloudflare.com https://www.openstreetmap.org; worker-src 'self' blob:; " +
-  "frame-ancestors 'self'; form-action 'self'; report-uri /api/csp-report";
+  "frame-ancestors 'self'; form-action 'self'; report-uri " + BASE + '/api/csp-report';
 
 // 安全性標頭（Worker 產生的回應；靜態資產由 dist/_headers 設定）
 const SEC_HEADERS: Record<string, string> = {
@@ -108,7 +110,7 @@ app.use('*', async (c, next) => {
 // 內容編輯後最多 60 秒生效。
 app.use('/api/*', async (c, next) => {
   const p = new URL(c.req.url).pathname;
-  if (c.req.method !== 'GET' || p.startsWith('/api/admin')) return next();
+  if (c.req.method !== 'GET' || p.startsWith(BASE + '/api/admin')) return next();
   const cacheKey = new Request(c.req.url, { method: 'GET' });
   const hit = await edgeCache.match(cacheKey);
   if (hit) { c.res = hit; return; }
@@ -144,7 +146,7 @@ app.route('/api/admin', admin);
 // R2 檔案服務（公開；附件、輪播背景、公開下載檔）
 // member/ 前綴為限定存取的檔案（沿用 paa-web 的權限前綴），公開端點一律拒絕。
 app.get('/files/*', async (c) => {
-  const key = decodeURIComponent(c.req.path.replace(/^\/files\//, ''));
+  const key = decodeURIComponent(c.req.path.slice((BASE + '/files/').length));
   if (!key || key.startsWith('member/')) return c.notFound();
   const obj = await c.env.FILES.get(key);
   if (!obj) return c.notFound();
@@ -383,21 +385,10 @@ app.post('/api/csp-report', async (c) => {
   return c.body(null, 204);
 });
 
-// ── robots.txt（依環境 host 動態指向 sitemap）──────────────────
-app.get('/robots.txt', (c) => {
-  const origin = new URL(c.req.url).origin;
-  // 非正式環境：整站禁止檢索（不應與正式站競爭排名）
-  const body = c.env.ENVIRONMENT !== 'prod'
-    ? ['User-agent: *', 'Disallow: /', ''].join('\n')
-    : [
-      // /api/ 不擋：前台頁面靠這些唯讀公開端點算染內容，擋 robots.txt 會讓 Googlebot
-      // 算染時抓不到資料（畫面卡在「載入失敗」），害頁面被判 Soft 404、無法收錄。
-      // 真正敏感的 /api/admin 本來就有 session 驗證，robots.txt 擋不到隱私。
-      'User-agent: *', 'Allow: /', 'Disallow: /admin',
-      '', 'Sitemap: ' + origin + '/sitemap.xml', '',
-    ].join('\n');
-  return new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
-});
+// ── robots.txt ──────────────────────────────────────────────
+// 網站根目錄的 robots.txt 屬於公會網站（paa-web）：正式站由它宣告本站的 sitemap
+// （Sitemap: https://www.paa.org.tw/expand-life/sitemap.xml）並 Disallow 本站後台。
+// 本 Worker 只在 workers.dev／本機的根目錄回一份整站禁止（見檔尾 fetch()）。
 
 // ── sitemap.xml（靜態頁 + 已發布公告）──────────────
 app.get('/sitemap.xml', async (c) => {
@@ -405,9 +396,9 @@ app.get('/sitemap.xml', async (c) => {
   const today = new Date().toISOString().slice(0, 10);
   const lm = (v: unknown) => (v ? String(v).slice(0, 10) : today);
   const urls: { loc: string; lastmod: string }[] = [];
-  for (const p of ['/', '/plan', '/subsidy', '/process', '/news', '/downloads', '/faq', '/consult', '/contact', '/privacy', '/terms', '/sitemap']) urls.push({ loc: origin + p, lastmod: today });
+  for (const p of ['/', '/plan', '/subsidy', '/process', '/news', '/downloads', '/faq', '/consult', '/contact', '/privacy', '/terms', '/sitemap']) urls.push({ loc: origin + BASE + p, lastmod: today });
   const anns = (await c.env.DB.prepare("select id,updated_at from announcements where visibility='public' and status='published' order by id").all()).results as any[];
-  for (const a of anns) urls.push({ loc: origin + '/news/' + a.id, lastmod: lm(a.updated_at) });
+  for (const a of anns) urls.push({ loc: origin + BASE + '/news/' + a.id, lastmod: lm(a.updated_at) });
   const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + urls.map((u) => `  <url><loc>${u.loc}</loc><lastmod>${u.lastmod}</lastmod></url>`).join('\n')
     + '\n</urlset>\n';
@@ -415,15 +406,16 @@ app.get('/sitemap.xml', async (c) => {
 });
 
 // ── 前台 SPA fallback + 每頁 meta 邊緣注入 ─────────────────────
-// 採路徑式網址（/news/1、/downloads…）。靜態檔由 Assets 優先服務；
+// 採路徑式網址（/expand-life/news/1、/expand-life/downloads…）。
+// build 產物放在 dist/expand-life/ 底下，資產層看到的路徑與瀏覽器一致，不需改寫。
 // 未命中的前台路徑在此回傳殼層 index.html，並依路徑注入每頁標題/描述/OG/JSON-LD。
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
-  const p = url.pathname;
+  const p = url.pathname.slice(BASE.length); // 去掉前綴後的站內路徑（以 / 開頭）
   if (p.startsWith('/api/') || p.startsWith('/files/')) return c.json({ error: 'not found' }, 404);
   if (p === '/admin' || p.startsWith('/admin/') || p.startsWith('/assets/')) return c.env.ASSETS.fetch(c.req.raw);
-  // 前台路徑：取殼層（根路徑 '/'，避免 /index.html 被資產層 307）後注入每頁 meta
-  const shell = await c.env.ASSETS.fetch(new Request(new URL('/', url), c.req.raw));
+  // 前台路徑：取殼層（BASE + '/'，避免 /index.html 被資產層 307）後注入每頁 meta
+  const shell = await c.env.ASSETS.fetch(new Request(new URL(BASE + '/', url), c.req.raw));
   const meta = await resolveMeta(c.env, url);
   return injectMeta(shell, meta);
 });
@@ -454,8 +446,27 @@ async function publishDueAnnouncements(env: Bindings): Promise<void> {
   ).bind(String(r.id), JSON.stringify({ title: r.title }))));
 }
 
+// ── 進入點：依路徑分流 ─────────────────────────────────────────
+// 正式站的 Route 是 `www.paa.org.tw/expand-life*`（wrangler 的 route pattern 只能以 * 結尾），
+// 也會比對到 /expand-lifestyle 這類不屬於本站的路徑：這些一律 fetch() 原樣交回公會網站
+// （www.paa.org.tw 綁在 paa-web 的 Custom Domain 上，對 Route 而言它就是 origin）。
+// workers.dev／本機沒有公會網站可交回：根目錄導向 BASE，其餘 404。
+const isPaaHost = (host: string) => host === 'paa.org.tw' || host.endsWith('.paa.org.tw');
+
 export default {
-  fetch: app.fetch,
+  async fetch(req: Request, env: Bindings, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(req.url);
+    const p = url.pathname;
+    if (p.startsWith(BASE + '/')) return app.fetch(req, env, ctx);
+    // 首頁一律帶結尾斜線（/expand-life/）：殼層的 <base href> 與相對路徑都以它為準
+    if (p === BASE) return Response.redirect(url.origin + BASE + '/' + url.search, 301);
+    if (isPaaHost(url.hostname)) return fetch(req);
+    if (p === '/') return Response.redirect(url.origin + BASE + '/', 302);
+    if (p === '/robots.txt') {
+      return new Response('User-agent: *\nDisallow: /\n', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    }
+    return new Response('Not Found', { status: 404, headers: { 'X-Robots-Tag': 'noindex, nofollow' } });
+  },
   async scheduled(_controller: ScheduledController, env: Bindings, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(publishDueAnnouncements(env));
   },

@@ -23,7 +23,7 @@ npx wrangler d1 execute paa-ur-db-dev --local --env dev \
   --command "INSERT INTO admin_users (username, password_hash, name, role) VALUES ('admin', '<hash>', '管理員', 'superadmin')"
 
 cd .. && npm run dev             # build:dev + wrangler dev --env dev
-# 前台 http://localhost:8787/　後台 http://localhost:8787/admin/
+# 前台 http://localhost:8787/expand-life/　後台 http://localhost:8787/expand-life/admin/
 # 邊改邊看：另開終端機跑 `npm run watch`（監看 web/ 自動重建 dist/）
 ```
 
@@ -36,8 +36,8 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**。
 
 | 環境 | 狀態 | 網址 |
 |---|---|---|
-| dev | 已部署（2026-11-06） | https://paa-ur-dev.paa-612.workers.dev（後台 `/admin/`） |
-| prod | 資源尚未建立 | — |
+| dev | 已部署（2026-11-06） | https://dev.paa.org.tw/expand-life/（後台 `/expand-life/admin/`）；workers.dev 也可用 |
+| prod | 資源尚未建立 | https://www.paa.org.tw/expand-life/ |
 
 ```bash
 npm run deploy:dev    # build(prod) + 部署 paa-ur-dev
@@ -47,7 +47,8 @@ npm run deploy:prod   # build(prod) + 部署 paa-ur-prod（需先建立 prod 資
 - 改了 schema（新增 `api/migrations/000N_*.sql`）要先 `cd api && npm run db:migrate:dev`，再部署。
 - `account_id` 寫在 `api/wrangler.jsonc` 的每個環境區塊裡（頂層的值 D1 指令讀不到），不需另外設 `CLOUDFLARE_ACCOUNT_ID`。
 - wrangler 需先登入：`npx wrangler login`。在 Claude Code 裡請用 `! npx wrangler login` 執行（`!` 前不能有空格）。
-- prod 首次上線、自訂網域、上線前的安全性收尾，見 `docs/上線部署手冊.md`；資源與 id 見 `api/README.md`。
+- **網址前綴**：本站掛在澎湖縣建築師公會網站的子路徑 `/expand-life`（Worker Route 疊在 paa-web 前面），前綴定義在 `api/src/base.ts`。運作方式與同網域的注意事項見 `docs/上線部署手冊.md` §6。
+- prod 首次上線、上線前的安全性收尾，見 `docs/上線部署手冊.md`；資源與 id 見 `api/README.md`。
 
 ## Structure
 
@@ -99,7 +100,7 @@ dist/                 # build 產物；git 忽略
   閒置 60 分＋絕對上限 12 小時，`token_version` 可撤銷。
 - **防護**：登入有 KV 速率限制與 Turnstile（未設 `TURNSTILE_SECRET` 時略過；site key 需另申請）；上傳有副檔名白名單與 15MB 上限。
 - **上線前閘門**：prod 設了 `BASIC_AUTH_USER`／`BASIC_AUTH_PASS` 兩個 secret 時，全站要求 Basic Auth；刪掉 secret 即解除。dev 不受影響。
-- **dev 不被收錄**：非 prod 環境全站回 `X-Robots-Tag: noindex, nofollow`，robots.txt 也整站禁止。
+- **dev 不被收錄**：非 prod 環境全站回 `X-Robots-Tag: noindex, nofollow`。根目錄的 robots.txt 屬於公會網站（paa-web），正式站的 sitemap 由它宣告。
 - **安全標頭**：CSP 目前 Report-Only。標頭同時由 `api/src/index.ts` 與 `build.mjs`→`dist/_headers` 設定，**兩處需同步**。
 - **效能**：公開 `/api/*` 邊緣快取 60s；前端內容雜湊檔名 + 長快取。
 - **備份**：`cd api && npm run backup:prod`（D1 dump + R2 鏡像 + 還原驗證），輸出到 repo 外的 `../paa-ur-backup/`。

@@ -1,5 +1,7 @@
 // SEO 階段 3：依路徑解析每頁 meta（標題／描述／OG 圖／JSON-LD），並以 HTMLRewriter 注入殼層。
 // 供爬蟲與社群預覽取得「每則公告」正確的標題、摘要與封面。
+// 網址一律含 BASE 前綴（/expand-life）；DB 內文的根相對路徑（/files/…）由 absUrl 補上前綴。
+import { BASE, withBase } from './base';
 
 const SITE = '澎湖縣老宅延壽機能復新計畫'; // 站名；與 web/index.html、web/assets/app.js 的 SITE_NAME 同步
 const SITE_DESC = '澎湖縣老宅延壽機能復新計畫 — 補助辦法、申請流程、常見問答、線上諮詢與申請表單下載。';
@@ -32,7 +34,8 @@ const clip = (s: unknown, n = 160) => {
 const absUrl = (u: string, origin: string) => {
   if (!u) return '';
   if (/^https?:\/\//i.test(u)) return u;
-  return origin + (u.startsWith('/') ? u : '/' + u);
+  // 根相對（/files/x）補前綴；相對路徑（舊種子資料的 assets/x）以 BASE/ 為基準
+  return origin + (u.startsWith('/') ? withBase(u) : BASE + '/' + u);
 };
 function bodyText(body: unknown): string {
   if (!body) return '';
@@ -46,6 +49,7 @@ function firstImage(body: unknown, origin: string): string | null {
   try { const j = JSON.parse(String(body)); if (Array.isArray(j)) { const im = j.find((b: any) => b.img || b.image); if (im) return absUrl(im.img || im.image, origin); } } catch { /* */ }
   return null;
 }
+// origin 參數一律傳「origin + BASE」（站台根網址），path 為站內路徑
 function articleJsonLd(origin: string, path: string, row: any, img: string) {
   return {
     '@context': 'https://schema.org',
@@ -67,8 +71,8 @@ function articleJsonLd(origin: string, path: string, row: any, img: string) {
 }
 
 export async function resolveMeta(env: Env, url: URL): Promise<PageMeta> {
-  const origin = url.origin;
-  const path = url.pathname;
+  const origin = url.origin + BASE; // 站台根網址（https://www.paa.org.tw/expand-life）
+  const path = url.pathname.slice(BASE.length) || '/'; // 站內路徑
   const defImg = origin + '/assets/og-cover-v3.jpg';
   const base: PageMeta = { title: SITE, description: SITE_DESC, image: defImg, type: 'website', canonical: origin + path, noindex: false };
   const make = (title: string, desc: string, extra: Partial<PageMeta> = {}): PageMeta => ({ ...base, title: full(title), description: clip(desc || SITE_DESC), ...extra });
@@ -84,7 +88,7 @@ export async function resolveMeta(env: Env, url: URL): Promise<PageMeta> {
     const id = decodeURIComponent(segs[1]);
     const row = await env.DB.prepare('select title,excerpt,body,visibility,status,publish_date from announcements where id=?').bind(id).first<any>();
     if (!row || row.visibility !== 'public' || row.status !== 'published') return make(STATIC.news.title, STATIC.news.desc, { noindex: true });
-    const img = firstImage(row.body, origin) || defImg;
+    const img = firstImage(row.body, url.origin) || defImg;
     return {
       ...base, title: full(row.title), description: clip(row.excerpt || bodyText(row.body) || STATIC.news.desc),
       image: img, type: 'article', canonical: origin + '/news/' + id, jsonld: articleJsonLd(origin, '/news/' + id, row, img),

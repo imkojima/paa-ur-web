@@ -10,7 +10,7 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**（`account_id` 寫在 `wran
 | | dev | prod |
 |---|---|---|
 | Worker | `paa-ur-dev` | `paa-ur-prod` |
-| 網址 | https://paa-ur-dev.paa-612.workers.dev | （未部署） |
+| 網址 | https://dev.paa.org.tw/expand-life/ | https://www.paa.org.tw/expand-life/（未部署） |
 | D1 | `paa-ur-db-dev`（`11dc589a-8d24-4f2b-8ca8-0b27f163ae27`） | `paa-ur-db`（待建立） |
 | KV | `paa-ur-kv-dev`（`bea72eaec51d4835a7f5dfe692424d6b`） | `paa-ur-kv-prod`（待建立） |
 | R2 | `paa-ur-files-dev` | `paa-ur-files`（待建立） |
@@ -51,7 +51,8 @@ npm run backup:verify:prod
 ```
 api/
 ├─ src/
-│  ├─ index.ts          # Hono 進入點：公開 API（含 /api/pages、/api/faqs、/api/inquiries）、SPA fallback、邊緣 meta 注入、安全標頭、sitemap/robots、cron
+│  ├─ index.ts          # Hono 進入點：公開 API（含 /api/pages、/api/faqs、/api/inquiries）、SPA fallback、邊緣 meta 注入、安全標頭、sitemap、cron；檔尾 fetch() 依 /expand-life 前綴分流
+│  ├─ base.ts           # 網址前綴 BASE（/expand-life）與 withBase()
 │  ├─ admin.ts          # 後台 API（公告/附件/檔案/頁面/常見問答/諮詢收件匣/法律頁面/友站/輪播/設定/管理者/稽核紀錄）
 │  ├─ auth.ts           # PBKDF2、session store、速率限制、Turnstile 驗證
 │  ├─ platform.ts       # Workers 平台相依的唯一集中處

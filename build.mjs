@@ -3,6 +3,9 @@
 //   --mode dev   純複製（不 minify/不 hash，可直接除錯）
 //   --watch      監看 web/ 變更自動重建（dev 用）
 // web/ 始終是可編輯原始碼；dist/ 為產物（git 忽略）。
+//
+// 本站掛在網址前綴 BASE（/expand-life，見 api/src/base.ts）底下：web/ 的內容輸出到 dist/expand-life/，
+// Workers 資產層看到的路徑即瀏覽器的實際路徑。_headers 放在 dist/ 根目錄（資產層只讀根目錄那份）。
 import * as esbuild from 'esbuild';
 import { rm, mkdir, cp, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
@@ -10,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB = join(__dirname, 'web');
-const DIST = join(__dirname, 'dist');
+const BASE = '/expand-life'; // 與 api/src/base.ts 同步
+const DIST_ROOT = join(__dirname, 'dist');
+const DIST = join(DIST_ROOT, BASE.slice(1));
 const argv = process.argv.slice(2);
 const MODE = argv.includes('--mode') ? argv[argv.indexOf('--mode') + 1] : 'prod';
 const WATCH = argv.includes('--watch');
@@ -27,7 +32,7 @@ const ENTRY_SET = new Set(ENTRIES.map((e) => e.src));
 const rel = (p) => relative(DIST, p).split('\\').join('/');
 
 async function build() {
-  await rm(DIST, { recursive: true, force: true });
+  await rm(DIST_ROOT, { recursive: true, force: true });
   await mkdir(DIST, { recursive: true });
   // 複製整個 web/，排除 build 進入點（由 esbuild 產出）
   await cp(WEB, DIST, {
@@ -61,8 +66,8 @@ async function build() {
 async function rewriteHtml(m) {
   const idx = join(DIST, 'index.html');
   let html = await readFile(idx, 'utf8');
-  html = html.replace('/assets/app.js', '/' + m['assets/app.js'])
-    .replace('/assets/styles.css', '/' + m['assets/styles.css']);
+  html = html.replace(BASE + '/assets/app.js', BASE + '/' + m['assets/app.js'])
+    .replace(BASE + '/assets/styles.css', BASE + '/' + m['assets/styles.css']);
   await writeFile(idx, html);
 
   const adm = join(DIST, 'admin', 'index.html');
@@ -79,9 +84,9 @@ async function writeHeaders(m) {
     + "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     + "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; "
     + "connect-src 'self' https://cloudflareinsights.com; frame-src 'self' blob: https://challenges.cloudflare.com https://www.openstreetmap.org; worker-src 'self' blob:; "
-    + "frame-ancestors 'self'; form-action 'self'; report-uri /api/csp-report";
+    + "frame-ancestors 'self'; form-action 'self'; report-uri " + BASE + '/api/csp-report';
   const lines = [
-    '/*',
+    BASE + '/*',
     '  X-Content-Type-Options: nosniff',
     '  X-Frame-Options: SAMEORIGIN',
     '  Referrer-Policy: strict-origin-when-cross-origin',
@@ -92,10 +97,10 @@ async function writeHeaders(m) {
     '# 內容雜湊檔：長快取 immutable（檔名改變才更新）',
   ];
   for (const k of Object.keys(m)) {
-    lines.push('/' + m[k], '  Cache-Control: public, max-age=31536000, immutable');
+    lines.push(BASE + '/' + m[k], '  Cache-Control: public, max-age=31536000, immutable');
   }
   lines.push(''); // 其餘（index.html、圖片等）沿用 Workers Assets 預設 must-revalidate
-  await writeFile(join(DIST, '_headers'), lines.join('\n'));
+  await writeFile(join(DIST_ROOT, '_headers'), lines.join('\n'));
 }
 
 await build();

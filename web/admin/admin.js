@@ -1,6 +1,19 @@
 // 後台管理 SPA：管理者登入 + 內容 CRUD（公告／檔案／法律頁面／友站／輪播／設定）。
-// 同源呼叫 /api/admin/*（cookie session）。
+// 同源呼叫 /expand-life/api/admin/*（cookie session）。
 (() => {
+  // 本站掛在公會網站子路徑 /expand-life（見 api/src/base.ts，改動需同步）。
+  // 資料庫存的是「站內根相對」網址（/files/x、/subsidy），顯示、送出請求前用 u() 補前綴。
+  const BASE = '/expand-life';
+  const u = (p) => {
+    const s = String(p == null ? '' : p);
+    if (!s.startsWith('/') || s.startsWith('//')) return s;
+    return (s === BASE || s.startsWith(BASE + '/')) ? s : BASE + s;
+  };
+  // TinyMCE 內文：載入編輯器前補前綴（圖片才看得到、連結點得開），存檔前去掉，資料庫維持站內根相對網址。
+  const BASE_ATTR_RE = /(\s(?:href|src)=["'])(\/(?!\/)[^"']*)/gi;
+  const toEditorHtml = (html) => String(html || '').replace(BASE_ATTR_RE, (m, a, v) => a + u(v));
+  const fromEditorHtml = (html) => String(html || '').replace(BASE_ATTR_RE, (m, a, v) =>
+    a + (v === BASE ? '/' : v.startsWith(BASE + '/') ? v.slice(BASE.length) : v));
   const app = document.getElementById('app');
   const BASE_TITLE = document.title; // index.html 的原始 <title>；標註測試一律以此為底重算，不疊加
   let me = null;
@@ -67,7 +80,7 @@
   }
 
   async function api(path, opts = {}) {
-    const r = await fetch('/api/admin' + path, {
+    const r = await fetch(BASE + '/api/admin' + path, {
       method: opts.method || 'GET',
       headers: opts.body ? { 'content-type': 'application/json' } : undefined,
       body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -89,7 +102,7 @@
   // multipart 版的 api()：CSV 匯入等要送 FormData 的端點用（不可自帶 content-type，
   // 否則瀏覽器沒機會補上 multipart 的 boundary）。
   async function apiForm(path, fd) {
-    const r = await fetch('/api/admin' + path, { method: 'POST', body: fd, credentials: 'same-origin' });
+    const r = await fetch(BASE + '/api/admin' + path, { method: 'POST', body: fd, credentials: 'same-origin' });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { maybeReauth(r.status, path); throw new Error(d.error || ('HTTP ' + r.status)); }
     return d;
@@ -100,7 +113,7 @@
     if (file && ALLOWED_UPLOAD_EXT.indexOf((file.name || '').toLowerCase().split('.').pop()) === -1) throw new Error('不支援的檔案類型');
     const fd = new FormData(); fd.append('file', file); fd.append('prefix', prefix || 'uploads');
     if (scope) fd.append('scope', scope); // scope='member' → 存為會員專屬（不經公開 /files/ 服務）
-    const r = await fetch('/api/admin/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
+    const r = await fetch(BASE + '/api/admin/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { maybeReauth(r.status, '/upload'); throw new Error(d.error || ('HTTP ' + r.status)); }
     return d;
@@ -265,9 +278,9 @@
     if (hint && typeof hint === 'object') return hint[v] != null ? hint[v] : (v == null ? '' : String(v));
     return v == null ? '' : String(v);
   };
-  // 後台位於 /admin/ 子路徑：把相對路徑（assets/…）正規化為根相對（/assets/…）；
-  // /files/… 與 http(s) 維持不變。
-  const assetUrl = (p) => (!p ? '' : /^(https?:|\/)/.test(p) ? p : '/' + p);
+  // 後台位於 /expand-life/admin/：相對路徑（舊種子的 assets/…）與根相對（/files/…）都補成含前綴的網址；
+  // http(s) 維持不變。
+  const assetUrl = (p) => (!p ? '' : /^https?:/.test(p) ? p : u(p.startsWith('/') ? p : '/' + p));
   // 內文：把舊的區塊 JSON 轉成 HTML 餵給 TinyMCE；字串則視為已是 HTML（原生載入）
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
   const blocksToHtml = (body) => {
@@ -282,7 +295,7 @@
     }).join('');
   };
   // TinyMCE 共用設定（自架於 /assets/tinymce，免 API key、UI 繁中）
-  const TINY_BASE = '/assets/tinymce';
+  const TINY_BASE = BASE + '/assets/tinymce';
   // 延後載入 TinyMCE：只有開啟公告編輯器時才下載 ~1.4MB 套件
   let _tinyLoad = null;
   function loadTinyMce() {
@@ -311,7 +324,10 @@
       table_default_attributes: { border: '1' },
       table_default_styles: { 'border-collapse': 'collapse', width: '100%' },
       content_style: 'body{font-family:"Noto Sans TC",system-ui,sans-serif;font-size:15px;line-height:1.8;color:#1c2733} table{border-collapse:collapse} td,th{border:1px solid #d9dee3;padding:6px 10px}',
-      init_instance_callback: (ed) => { ed.setContent(html || ''); },
+      // 網址存成「含前綴的根相對路徑」（/expand-life/files/x），存檔時再由 fromEditorHtml 去掉前綴。
+      // 不用 TinyMCE 預設的相對路徑（../files/x）：那是相對後台網址算的，前台解析會錯。
+      relative_urls: false, remove_script_host: true, convert_urls: true,
+      init_instance_callback: (ed) => { ed.setContent(toEditorHtml(html)); },
     });
     return true;
   }
@@ -335,7 +351,7 @@
   // start() 會先 await 這支再畫任何畫面（登入頁或後台首頁皆然）——後台不是拚首次繪製速度的
   // 公開頁面，寧可多等一趟同源小請求，換登入頁一開始就標示正確，不要有「先看到沒標註的畫面」這種閃爍。
   async function fetchEnv() {
-    try { const cfg = await fetch('/api/config').then((r) => r.json()); if (cfg && cfg.env) env = cfg.env; } catch { /* 保留預設 prod */ }
+    try { const cfg = await fetch(BASE + '/api/config').then((r) => r.json()); if (cfg && cfg.env) env = cfg.env; } catch { /* 保留預設 prod */ }
     // 以 BASE_TITLE 重算而非疊加：start() 在登入成功後會再呼叫一次 fetchEnv()，
     // 疊加的話標題會愈長愈多「（測試）」。
     document.title = BASE_TITLE + (env === 'dev' ? '（測試）' : '');
@@ -346,7 +362,7 @@
   const testBanner = () => h('div', { className: 'pa-testbanner' }, '測試站：資料僅供測試，非正式後台');
   async function mountTurnstile(container) {
     try {
-      const cfg = await fetch('/api/config').then((r) => r.json());
+      const cfg = await fetch(BASE + '/api/config').then((r) => r.json());
       if (!cfg.turnstileSiteKey) return null;
       await loadTurnstile();
       const id = window.turnstile.render(container, { sitekey: cfg.turnstileSiteKey });
@@ -719,7 +735,7 @@
         h('td', null, h('div', { className: 'pa-actions' },
           // 需登入的附件位於 member/ 前綴，公開 /files/* 取不到，改走後台認證端點
           a.file_path ? h('a', { className: 'btn-ghost btn-sm', target: '_blank', rel: 'noopener', style: 'text-decoration:none',
-            href: String(a.file_path).indexOf('member/') === 0 ? '/api/admin/attachments/' + a.id + '/download' : '/files/' + a.file_path }, '下載') : null,
+            href: String(a.file_path).indexOf('member/') === 0 ? BASE + '/api/admin/attachments/' + a.id + '/download' : BASE + '/files/' + a.file_path }, '下載') : null,
           h('button', { className: 'btn-danger btn-sm', onClick: async () => { if (!confirm('刪除附件「' + a.name + '」？此動作無法復原。')) return; await api('/attachments/' + a.id, { method: 'DELETE' }); pager.load(true); } }, '刪除'))));
       const headers = ['檔名', '所屬公告', '類型', '大小', byDate ? '上傳日期' : null, '操作'].filter(Boolean);
       const renderTable = (items) => h('table', { className: 'pa-table' },
@@ -777,7 +793,7 @@
       const msg = h('div', { className: 'pa-err' }); msg.style.display = 'none';
       const save = async () => {
         const ed = window.tinymce && tinymce.get('intro-body');
-        const html = ed ? ed.getContent() : (body.value || '');
+        const html = ed ? fromEditorHtml(ed.getContent()) : (body.value || '');
         try {
           await api('/settings/home_intro', { method: 'PUT', body: { value: {
             title: title.value.trim(),
@@ -888,7 +904,7 @@
           : h('tr', null, h('td', { style: 'color:#999' }, '無資料')))));
     async function load() {
       if (!month.value) return;
-      csv.href = '/api/admin/inquiries-report?format=csv&month=' + encodeURIComponent(month.value);
+      csv.href = BASE + '/api/admin/inquiries-report?format=csv&month=' + encodeURIComponent(month.value);
       out.innerHTML = ''; out.appendChild(h('div', { className: 'pa-loading' }, '載入中…'));
       try {
         const r = await api('/inquiries-report?month=' + encodeURIComponent(month.value));
@@ -970,7 +986,7 @@
         h('td', null, h('div', { className: 'pa-actions' },
           res.download
             ? (it[res.download]
-              ? h('a', { className: 'btn-ghost btn-sm', style: 'text-decoration:none', href: '/api/admin' + res.api + '/' + it.id + '/download', target: '_blank', rel: 'noopener noreferrer' }, '下載')
+              ? h('a', { className: 'btn-ghost btn-sm', style: 'text-decoration:none', href: BASE + '/api/admin' + res.api + '/' + it.id + '/download', target: '_blank', rel: 'noopener noreferrer' }, '下載')
               : h('button', { className: 'btn-ghost btn-sm', disabled: 'disabled', title: '尚未上傳檔案，無法下載。' }, '下載'))
             : null,
           h('button', { className: 'btn-ghost btn-sm', onClick: () => openForm(it.id) }, res.editLabel || '編輯'),
@@ -1259,7 +1275,7 @@
             else if (f.type === 'file' || f.type === 'image' || f.type === 'hidden' || f.type === 'radio') payload[k] = el.value || null;
             else if (f.type === 'richtext') {
               const ed = window.tinymce && tinymce.get(el.id);
-              const html = ed ? ed.getContent() : el.value;
+              const html = ed ? fromEditorHtml(ed.getContent()) : el.value;
               payload[k] = (html && html !== '<p><br></p>') ? html : null;
             }
             else payload[k] = el.value.trim() || null;
@@ -1337,7 +1353,7 @@
       const save = async () => {
         err.style.display = 'none';
         const ed = window.tinymce && tinymce.get('legal-body');
-        const html = ed ? ed.getContent() : (f.body.value || '');
+        const html = ed ? fromEditorHtml(ed.getContent()) : (f.body.value || '');
         const payload = {
           title: f.title.value.trim(), title_en: f.title_en.value.trim() || null,
           updated_date: f.updated_date.value || null,
@@ -1423,7 +1439,7 @@
           return h('button', { className: 'btn-ghost btn-sm', disabled: 'disabled',
             title: '限定公告前台不會顯示。' }, '前台觀看');
         }
-        return h('a', { className: 'btn-ghost btn-sm', href: '/news/' + a.id, target: '_blank', rel: 'noopener', style: 'text-decoration:none',
+        return h('a', { className: 'btn-ghost btn-sm', href: BASE + '/news/' + a.id, target: '_blank', rel: 'noopener', style: 'text-decoration:none',
           title: '另開分頁檢視前台頁面' }, '前台觀看');
       };
       const rowEl = (a) => h('tr', null,
@@ -1561,7 +1577,7 @@
       const save = async () => {
         err.style.display = 'none';
         const ed = window.tinymce && tinymce.get('ann-body');
-        const html = ed ? ed.getContent() : (f.body.value || '');
+        const html = ed ? fromEditorHtml(ed.getContent()) : (f.body.value || '');
         const payload = {
           visibility: f.visibility.value, category_id: Number(f.category.value), title: f.title.value.trim(),
           excerpt: f.excerpt.value.trim() || null, body: (html && html !== '<p><br></p>') ? html : null, publish_date: f.publish_date.value,
