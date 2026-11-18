@@ -15,7 +15,7 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**（`account_id` 寫在 `wran
 | KV | `paa-ur-kv-dev`（`bea72eaec51d4835a7f5dfe692424d6b`） | `paa-ur-kv-prod`（`435783839c664e0f963c859c49e26739`） |
 | R2 | `paa-ur-files-dev` | `paa-ur-files` |
 
-dev 已建立並部署（2026-11-06）。prod 已建立並部署（2026-11-18），目前開著上線前閘門（Basic Auth），步驟見 `../docs/上線部署手冊.md`。
+dev 已建立並部署（2026-11-06）。prod 已建立並於 2026-11-18 正式上線，步驟見 `../docs/上線部署手冊.md`。
 
 > ⚠️ 本機 D1 的資料檔是依 `database_id` 對應的。改了 `wrangler.jsonc` 裡 dev 的 `database_id`，
 > `--local` 就會指到一個新的空資料庫（舊資料仍在 `.wrangler/state/v3/d1/` 底下，只是不再被讀到）。

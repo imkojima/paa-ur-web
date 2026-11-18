@@ -37,7 +37,7 @@ Cloudflare 帳號：**PAA 澎湖縣建築師公會**。
 | 環境 | 狀態 | 網址 |
 |---|---|---|
 | dev | 已部署（2026-11-06） | https://dev.paa.org.tw/expand-life/（後台 `/expand-life/admin/`）；workers.dev 也可用 |
-| prod | 已部署（2026-11-18），上線前閘門開啟中、正式內容待建立 | https://www.paa.org.tw/expand-life/ |
+| prod | 正式上線（2026-11-18） | https://www.paa.org.tw/expand-life/ |
 
 ```bash
 npm run deploy:dev    # build(prod) + 部署 paa-ur-dev
